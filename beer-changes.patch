@@ -1,0 +1,384 @@
+From ba287145d4899c1958be67816c92076013705441 Mon Sep 17 00:00:00 2001
+From: anapedra <anapedra.mil@gmail.com>
+Date: Mon, 24 Nov 2025 16:04:57 -0300
+Subject: [PATCH] WIP: Salvando trabalho da Beer antes de rebasear/limpar.
+
+---
+ .../stock_manager/domain/entities/Beer.java   | 226 ++++++++++++++++++
+ .../repositories/BeerRepository.java          |  10 +
+ .../domein/entities/BeerRepositoryTest.java   | 112 +++++++++
+ 3 files changed, 348 insertions(+)
+ create mode 100644 backend/stock-manager/src/main/java/com/anapedra/stock_manager/domain/entities/Beer.java
+ create mode 100644 backend/stock-manager/src/main/java/com/anapedra/stock_manager/repositories/BeerRepository.java
+ create mode 100644 backend/stock-manager/src/test/java/com/anapedra/stock_manager/domein/entities/BeerRepositoryTest.java
+
+diff --git a/backend/stock-manager/src/main/java/com/anapedra/stock_manager/domain/entities/Beer.java b/backend/stock-manager/src/main/java/com/anapedra/stock_manager/domain/entities/Beer.java
+new file mode 100644
+index 0000000..52fb53a
+--- /dev/null
++++ b/backend/stock-manager/src/main/java/com/anapedra/stock_manager/domain/entities/Beer.java
+@@ -0,0 +1,226 @@
++package com.anapedra.stock_manager.domain.entities;
++
++import com.fasterxml.jackson.annotation.JsonFormat;
++import jakarta.persistence.*;
++
++import java.time.LocalDate;
++import java.time.LocalDateTime;
++import java.util.Objects;
++
++@Entity
++@Table(name = "tb_beers")
++public class Beer {
++
++    @Id
++    @GeneratedValue(strategy = GenerationType.IDENTITY)
++    private Long id;
++
++    @Column(name = "name")
++    private String name;
++    
++    private String urlImg;
++    
++    @Column(name = "alcohol_content", nullable = false)
++    private Double alcoholContent;
++    
++    @Column(nullable = false)
++    private Double price;
++
++
++    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd",timezone = "GMT")
++    private LocalDateTime registrationMoment;
++
++    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd",timezone = "GMT")
++    private LocalDateTime updateMoment;
++
++    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd",timezone = "GMT")
++    private LocalDate manufactureDate;
++
++    @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd",timezone = "GMT")
++    private LocalDate expirationDate;
++/*
++    @OneToOne(mappedBy = "beer", cascade = CascadeType.ALL, orphanRemoval = true)    @JoinColumn(name = "stock_id") // <--- ISTO FAZ A TABELA BEER SER A PROPRIETÁRIA
++    private Stock stock;
++
++    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
++    @JoinTable(
++        name = "beer_category", // Name of the join table
++        joinColumns = @JoinColumn(name = "beer_id"), // Foreign key column for Beer in the join table
++        inverseJoinColumns = @JoinColumn(name = "category_id") // Foreign key column for Category in the join table
++    )
++    private Set<Category> categories = new HashSet<>();
++
++    @OneToMany(mappedBy = "id.beer")
++    private Set<OrderItem> items=new HashSet<>();
++
++ */
++
++    public Beer() {
++    }
++
++    // Na classe com.anasantana.bookstore.entities.Beer
++
++    // Construtor completo usado no CommandLineRunner
++    public Beer(Long id, String name, String urlImg, Double alcoholContent, Double price, LocalDate manufactureDate, LocalDate expirationDate) {
++        this.id = id;
++        this.name = name;
++        this.urlImg = urlImg;
++        this.alcoholContent = alcoholContent;
++        this.price = price;
++        this.manufactureDate = manufactureDate;
++        this.expirationDate = expirationDate;
++        // Os campos de timestamp serão inicializados via @PrePersist/prePersist()
++    }
++
++    // --- Helper Methods to maintain Bidirectional relationships (One-to-One and Many-to-Many) ---
++    /**
++     * Verifica se a cerveja está vencida na data atual.
++     * @return true se a data de expiração for anterior ou igual à data de hoje.
++     */
++    public boolean isExpired() {
++        if (this.expirationDate == null) {
++            return false; // Se não tem data de validade, considera que não está vencida.
++        }
++        // isBefore ou isEqual significa que está vencida (ou vence hoje)
++        return this.expirationDate.isBefore(LocalDate.now()) || this.expirationDate.isEqual(LocalDate.now());
++    }
++/*
++    public void setStock(Stock stock) {
++        this.stock = stock;
++    }
++
++    public int returnQuantityStock(){
++        int quantity = 0;
++        if (this.stock != null) {
++            return getStock().getQuantity();
++        }
++        return quantity;
++
++    }
++
++    public String returnCategoryName(){
++        String categoryName = " ";
++        for (Category category : categories){
++            categoryName = category.getName();
++        }
++        return categoryName;
++
++    }
++
++
++
++    // For Many-to-Many (Category) - Your methods are already correct for a bidirectional Set
++    public void addCategory(Category category) {
++        categories.add(category);
++        category.getBeers().add(this);
++    }
++
++    public void removeCategory(Category category) {
++        categories.remove(category);
++        category.getBeers().remove(this);
++    }
++
++ */
++
++    public Long getId() {
++        return id;
++    }
++
++    public void setId(Long id) {
++        this.id = id;
++    }
++
++    public String getName() {
++        return name;
++    }
++
++    public void setName(String name) {
++        this.name = name;
++    }
++
++    public String getUrlImg() {
++        return urlImg;
++    }
++
++    public void setUrlImg(String urlImg) {
++        this.urlImg = urlImg;
++    }
++
++    public double getAlcoholContent() {
++        return alcoholContent;
++    }
++
++    public void setAlcoholContent(Double alcoholContent) {
++        this.alcoholContent = alcoholContent;
++    }
++
++    public Double getPrice() {
++        return price;
++    }
++
++    public void setPrice(Double price) {
++        this.price = price;
++    }
++
++    public LocalDateTime getRegistrationMoment() {
++        return registrationMoment;
++    }
++
++    public void setRegistrationMoment(LocalDateTime registrationMoment) {
++        this.registrationMoment = registrationMoment;
++    }
++
++    public LocalDateTime getUpdateMoment() {
++        return updateMoment;
++    }
++
++    public void setUpdateMoment(LocalDateTime updateMoment) {
++        this.updateMoment = updateMoment;
++    }
++
++    public LocalDate getManufactureDate() {
++        return manufactureDate;
++    }
++
++    public void setManufactureDate(LocalDate manufactureDate) {
++        this.manufactureDate = manufactureDate;
++    }
++
++    public LocalDate getExpirationDate() {
++        return expirationDate;
++    }
++
++    public void setExpirationDate(LocalDate expirationDate) {
++        this.expirationDate = expirationDate;
++    }
++/*
++    public Stock getStock() {
++        return stock;
++    }
++
++    public Set<Category> getCategories() {
++        return categories;
++    }
++
++    public void setCategories(Set<Category> categories) {
++        this.categories = categories;
++    }
++
++    public List<Order> getOrders(){
++        return items.stream().map(OrderItem::getOrder).collect(Collectors.toList());
++    }
++
++ */
++
++    @Override
++    public boolean equals(Object o) {
++        if (o == null || getClass() != o.getClass()) return false;
++        Beer beer = (Beer) o;
++        return Objects.equals(id, beer.id);
++    }
++
++    @Override
++    public int hashCode() {
++        return Objects.hashCode(id);
++    }
++}
+diff --git a/backend/stock-manager/src/main/java/com/anapedra/stock_manager/repositories/BeerRepository.java b/backend/stock-manager/src/main/java/com/anapedra/stock_manager/repositories/BeerRepository.java
+new file mode 100644
+index 0000000..fdeb8ed
+--- /dev/null
++++ b/backend/stock-manager/src/main/java/com/anapedra/stock_manager/repositories/BeerRepository.java
+@@ -0,0 +1,10 @@
++package com.anapedra.stock_manager.repositories;
++
++
++import com.anapedra.stock_manager.domain.entities.Beer;
++import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.stereotype.Repository;
++
++@Repository
++public interface BeerRepository extends JpaRepository<Beer, Long> {
++}
+diff --git a/backend/stock-manager/src/test/java/com/anapedra/stock_manager/domein/entities/BeerRepositoryTest.java b/backend/stock-manager/src/test/java/com/anapedra/stock_manager/domein/entities/BeerRepositoryTest.java
+new file mode 100644
+index 0000000..4c710d7
+--- /dev/null
++++ b/backend/stock-manager/src/test/java/com/anapedra/stock_manager/domein/entities/BeerRepositoryTest.java
+@@ -0,0 +1,112 @@
++package com.anapedra.stock_manager.domein.entities;
++
++import com.anapedra.stock_manager.domain.entities.Beer;
++import com.anapedra.stock_manager.repositories.BeerRepository;
++import org.junit.jupiter.api.Assertions;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
++import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
++import org.springframework.dao.EmptyResultDataAccessException;
++import java.time.LocalDate;
++import java.util.Optional;
++
++@DataJpaTest
++public class BeerRepositoryTest {
++
++    @Autowired
++    private BeerRepository repository;
++
++    @Autowired
++    private TestEntityManager entityManager; // Ajuda a manipular dados no H2
++
++    private Long existingId;
++    private Long nonExistingId;
++    private int countTotalBeers;
++
++    @BeforeEach
++    void setUp() throws Exception {
++        // IDs para testes
++        nonExistingId = 1000L;
++        
++        // 1. Persiste uma entidade para garantir que o banco tenha dados iniciais
++        Beer beerSeed = new Beer(
++            null, 
++            "Pilsen Lager Test", 
++            "http://img.com/pilsen.jpg", 
++            4.8, 
++            6.50, 
++            LocalDate.of(2025, 3, 1), 
++            LocalDate.of(2026, 3, 1)
++        );
++        
++        // Persiste e captura o ID gerado (que será o existingId)
++        entityManager.persist(beerSeed);
++        existingId = beerSeed.getId(); 
++        
++        // 2. Conta o total de entidades após a persistência
++        countTotalBeers = (int) repository.count();
++    }
++
++    // ---------------------- TESTES DE LEITURA (Find) ----------------------
++    
++    @Test
++    void findById_shouldReturnBeer_whenIdExists() {
++        Optional<Beer> result = repository.findById(existingId);
++        // Garante que a cerveja foi encontrada
++        Assertions.assertTrue(result.isPresent()); 
++        Assertions.assertEquals("Pilsen Lager Test", result.get().getName());
++    }
++
++    @Test
++    void findById_shouldReturnEmpty_whenIdDoesNotExist() {
++        Optional<Beer> result = repository.findById(nonExistingId);
++        // Garante que a busca por ID inexistente retorna vazio
++        Assertions.assertFalse(result.isPresent());
++    }
++
++    // ---------------------- TESTES DE CRIAÇÃO/ATUALIZAÇÃO (Save) ----------------------
++    
++    @Test
++    void save_shouldPersistWithAutoincrement_whenIdIsNull() {
++        Beer newBeer = new Beer(
++            null, 
++            "New Test Beer for Save", 
++            "http://img.com/new.jpg", 
++            4.5, 
++            12.00, 
++            LocalDate.of(2025, 5, 1), 
++            LocalDate.of(2025, 11, 1)
++        );
++        
++        newBeer = repository.save(newBeer);
++
++        // Verifica se o ID foi gerado e a contagem aumentou
++        Assertions.assertNotNull(newBeer.getId());
++        Assertions.assertEquals(countTotalBeers + 1, repository.count());
++    }
++    
++    // ---------------------- TESTES DE DELEÇÃO (Delete) ----------------------
++    
++    @Test
++    void delete_shouldDeleteObject_whenIdExists() {
++        repository.deleteById(existingId);
++        
++        // Tenta buscar o objeto deletado
++        Optional<Beer> result = repository.findById(existingId);
++        
++        // Garante que não foi encontrado e que a contagem diminuiu
++        Assertions.assertFalse(result.isPresent());
++        Assertions.assertEquals(countTotalBeers - 1, repository.count());
++    }
++
++
++    // ---------------------- TESTE DE CONTADOR (Count) ----------------------
++    
++    @Test
++    void findAll_shouldReturnCorrectCount() {
++        long count = repository.count();
++        Assertions.assertEquals(countTotalBeers, count);
++    }
++}
+\ No newline at end of file
+-- 
+2.34.1
+

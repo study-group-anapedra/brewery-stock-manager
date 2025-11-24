@@ -1,0 +1,47 @@
+name: Java CI com Maven (Build e Testes)
+
+# 1. Quando o workflow será ativado
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+
+# O 'job' que será o seu status check obrigatório no GitHub Ruleset
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    # Define as permissões de acesso (Apenas leitura para o código é suficiente)
+    permissions:
+      contents: read
+      
+    steps:
+    - name: Checkout do Código
+      uses: actions/checkout@v4
+      
+    # 1. Configurar o ambiente Java 21
+    - name: Configurar JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven' # Adiciona cache para dependências do Maven (acelera o processo)
+
+    # 2. Compilar e Rodar Testes
+    - name: Rodar Testes Unitários e Criar Build com Maven
+      # CORREÇÃO APLICADA: Removido o --file pom.xml
+      run: mvn -B clean install
+      
+    # 3. Gerar o relatório JaCoCo (Cobertura de Testes)
+    - name: Gerar Relatório JaCoCo (Cobertura)
+      run: mvn jacoco:report
+      
+    # 4. Upload do JAR de Build (Artefato)
+    - name: Upload do JAR de Build (Artefato)
+      uses: actions/upload-artifact@v4
+      with:
+        name: stock-manager-jar
+        path: target/*.jar
+        if-no-files-found: error
+        retention-days: 1

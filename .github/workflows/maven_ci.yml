@@ -30,18 +30,20 @@ jobs:
 
     # 2. Compilar e Rodar Testes
     - name: Rodar Testes Unitários e Criar Build com Maven
-      # CORREÇÃO APLICADA: Removido o --file pom.xml
-      run: mvn -B clean install
+      # CORREÇÃO APLICADA: Deve incluir o caminho do pom.xml
+      run: mvn -B clean install --file backend/stock-manager/pom.xml
       
     # 3. Gerar o relatório JaCoCo (Cobertura de Testes)
     - name: Gerar Relatório JaCoCo (Cobertura)
-      run: mvn jacoco:report
+      # CORREÇÃO APLICADA: Deve incluir o caminho do pom.xml
+      run: mvn jacoco:report --file backend/stock-manager/pom.xml
       
     # 4. Upload do JAR de Build (Artefato)
     - name: Upload do JAR de Build (Artefato)
       uses: actions/upload-artifact@v4
       with:
         name: stock-manager-jar
-        path: target/*.jar
+        # CORREÇÃO APLICADA: Deve apontar para a subpasta target
+        path: backend/stock-manager/target/*.jar 
         if-no-files-found: error
         retention-days: 1

@@ -16,11 +16,9 @@ public class Category {
     @Column(name = "name")
     private String name;
     
-    // A descrição pode ser longa, use @Lob ou ajuste o length
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // --- Relationship: Many-to-Many with Beer (INVERSE SIDE) ---
 
     /**
      * O relacionamento Many-to-Many é mapeado de forma bidirecional.
@@ -28,18 +26,13 @@ public class Category {
      * mappedBy="categories" aponta para o nome do campo 'categories' na classe Beer, 
      * que é o lado PROPRIETÁRIO e contém a anotação @JoinTable.
      */
-   // @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
-    // Usar FetchType.LAZY é padrão e recomendado para coleções para evitar N+1 queries.
-    //private Set<Beer> beers = new HashSet<>();
+    @ManyToMany(mappedBy = "categories", fetch = FetchType.LAZY)
+    private Set<Beer> beers = new HashSet<>();
 
-    // --- Constructors ---
 
-    // 1. Construtor padrão obrigatório pelo JPA (public ou protected)
     public Category() {
-        // Inicialização de 'beers' feita diretamente na declaração do campo acima
     }
 
-    // 2. Construtor de conveniência
     public Category(Long id, String name, String description) {
         this.id = id;
         this.name = name;
@@ -47,8 +40,7 @@ public class Category {
 
     }
 
-    // --- Getters and Setters ---
-    
+
     public Long getId() { return id; }
 
     public void setId(Long id) { this.id = id; }
@@ -61,16 +53,11 @@ public class Category {
 
     public void setDescription(String description) { this.description = description; }
 
-  //  public Set<Beer> getBeers() { return beers; }
+   public Set<Beer> getBeers() { return beers; }
     
-    // Omitido setter para 'beers' para forçar o uso de métodos de auxílio (add/remove)
-    
-    
-    // --- Utility Methods for Bidirectional Sync (Optional, but recommended) ---
-   /*
+
     public void addBeer(Beer beer) {
         this.beers.add(beer);
-        // Garante que o lado proprietário (Beer) também seja atualizado
         if (!beer.getCategories().contains(this)) {
             beer.getCategories().add(this);
         }
@@ -78,17 +65,14 @@ public class Category {
 
     public void removeBeer(Beer beer) {
         this.beers.remove(beer);
-        // Garante que o lado proprietário (Beer) também seja atualizado
         if (beer.getCategories().contains(this)) {
             beer.getCategories().remove(this);
         }
     }
 
-    */
 
-    // --- equals() and hashCode() ---
 
-    // Essencial para entidades JPA: usar apenas o ID
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -104,7 +88,6 @@ public class Category {
 
     @Override
     public String toString() {
-        // Cuidado: Evite acessar coleções lazy-loaded (beers.size()) fora de uma transação
         return "Category{" +
                 "id=" + id +
                 ", name='" + name + '\'' +

@@ -5,10 +5,12 @@ import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
-@Table(name = "tb_beers")
+@Table(name = "beers")
 public class Beer {
 
     @Id
@@ -42,18 +44,20 @@ public class Beer {
     @OneToOne(mappedBy = "beer", cascade = CascadeType.ALL, orphanRemoval = true)    @JoinColumn(name = "stock_id") // <--- ISTO FAZ A TABELA BEER SER A PROPRIETÁRIA
     private Stock stock;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "beer_category", // Name of the join table
-        joinColumns = @JoinColumn(name = "beer_id"), // Foreign key column for Beer in the join table
-        inverseJoinColumns = @JoinColumn(name = "category_id") // Foreign key column for Category in the join table
-    )
-    private Set<Category> categories = new HashSet<>();
+
 
     @OneToMany(mappedBy = "id.beer")
     private Set<OrderItem> items=new HashSet<>();
 
  */
+
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "beer_category", // Name of the join table
+            joinColumns = @JoinColumn(name = "beer_id"), // Foreign key column for Beer in the join table
+            inverseJoinColumns = @JoinColumn(name = "category_id") // Foreign key column for Category in the join table
+    )
+    private Set<Category> categories = new HashSet<>();
 
     public Beer() {
     }
@@ -198,6 +202,14 @@ public class Beer {
         return stock;
     }
 
+
+
+    public List<Order> getOrders(){
+        return items.stream().map(OrderItem::getOrder).collect(Collectors.toList());
+    }
+
+ */
+
     public Set<Category> getCategories() {
         return categories;
     }
@@ -205,12 +217,6 @@ public class Beer {
     public void setCategories(Set<Category> categories) {
         this.categories = categories;
     }
-
-    public List<Order> getOrders(){
-        return items.stream().map(OrderItem::getOrder).collect(Collectors.toList());
-    }
-
- */
 
     @Override
     public boolean equals(Object o) {

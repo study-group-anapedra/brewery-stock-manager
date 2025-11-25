@@ -2,7 +2,6 @@ package com.anapedra.stock_manager.domein.entities;
 
 import com.anapedra.stock_manager.domain.entities.Category;
 import org.junit.jupiter.api.Test;
-import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;

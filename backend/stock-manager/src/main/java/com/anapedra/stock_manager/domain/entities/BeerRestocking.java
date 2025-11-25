@@ -32,7 +32,7 @@ public class BeerRestocking implements Serializable {
     }
 
 
-/*
+
     public void restoreStock(int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than zero");
@@ -46,7 +46,7 @@ public class BeerRestocking implements Serializable {
         stock.setQuantity(newQuantity);
     }
 
- */
+
 
     // Getters and Setters
     public Long getId() {

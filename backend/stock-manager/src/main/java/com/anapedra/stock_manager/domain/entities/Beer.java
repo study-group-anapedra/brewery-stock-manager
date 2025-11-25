@@ -6,8 +6,10 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "beers")
@@ -40,7 +42,7 @@ public class Beer {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd",timezone = "GMT")
     private LocalDate expirationDate;
-/*
+
     @OneToOne(mappedBy = "beer", cascade = CascadeType.ALL, orphanRemoval = true)    @JoinColumn(name = "stock_id") // <--- ISTO FAZ A TABELA BEER SER A PROPRIETÁRIA
     private Stock stock;
 
@@ -49,22 +51,19 @@ public class Beer {
     @OneToMany(mappedBy = "id.beer")
     private Set<OrderItem> items=new HashSet<>();
 
- */
+
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
-            name = "beer_category", // Name of the join table
-            joinColumns = @JoinColumn(name = "beer_id"), // Foreign key column for Beer in the join table
-            inverseJoinColumns = @JoinColumn(name = "category_id") // Foreign key column for Category in the join table
+            name = "beer_category",
+            joinColumns = @JoinColumn(name = "beer_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private Set<Category> categories = new HashSet<>();
 
     public Beer() {
     }
 
-    // Na classe com.anasantana.bookstore.entities.Beer
-
-    // Construtor completo usado no CommandLineRunner
     public Beer(Long id, String name, String urlImg, Double alcoholContent, Double price, LocalDate manufactureDate, LocalDate expirationDate) {
         this.id = id;
         this.name = name;
@@ -88,7 +87,7 @@ public class Beer {
         // isBefore ou isEqual significa que está vencida (ou vence hoje)
         return this.expirationDate.isBefore(LocalDate.now()) || this.expirationDate.isEqual(LocalDate.now());
     }
-/*
+
     public void setStock(Stock stock) {
         this.stock = stock;
     }
@@ -124,7 +123,7 @@ public class Beer {
         category.getBeers().remove(this);
     }
 
- */
+
 
     public Long getId() {
         return id;
@@ -197,7 +196,7 @@ public class Beer {
     public void setExpirationDate(LocalDate expirationDate) {
         this.expirationDate = expirationDate;
     }
-/*
+
     public Stock getStock() {
         return stock;
     }
@@ -208,7 +207,7 @@ public class Beer {
         return items.stream().map(OrderItem::getOrder).collect(Collectors.toList());
     }
 
- */
+
 
     public Set<Category> getCategories() {
         return categories;

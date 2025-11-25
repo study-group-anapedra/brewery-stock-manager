@@ -45,7 +45,7 @@ public class OrderItem implements Serializable {
 	}
 
 
-/*
+
 
     public void decreaseStock(int quantity) {
         if (quantity <= 0) {
@@ -62,7 +62,7 @@ public class OrderItem implements Serializable {
 
     }
 
- */
+
 
     public OrderItemPK getId() {
         return id;

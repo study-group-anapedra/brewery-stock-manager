@@ -117,9 +117,9 @@ public class StockLoss implements Serializable {
         }
     }
 
-//    public void getUpdateStock() {
-//        beer.getStock().setQuantity(beer.getStock().getQuantity() - quantityLost);
-//    }
+   public void getUpdateStock() {
+        beer.getStock().setQuantity(beer.getStock().getQuantity() - quantityLost);
+   }
 
 
     @Override

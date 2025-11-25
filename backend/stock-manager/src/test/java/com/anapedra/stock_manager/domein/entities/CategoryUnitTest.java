@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// Não precisa de anotações do Spring, é um teste unitário Java puro.
 public class CategoryUnitTest {
 
     private static final Long DEFAULT_ID = 1L;
@@ -23,7 +22,6 @@ public class CategoryUnitTest {
     void testDefaultConstructor() {
         Category category = new Category();
         
-        // Verifica se os campos de referência foram inicializados (devem ser nulos, exceto coleções se tivessem)
         assertNull(category.getId());
         assertNull(category.getName());
         assertNull(category.getDescription());

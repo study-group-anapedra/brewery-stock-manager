@@ -104,7 +104,7 @@ public class Beer {
     public String returnCategoryName(){
         String categoryName = " ";
         for (Category category : categories){
-            categoryName = category.getName();
+            categoryName = category.getDescription();
         }
         return categoryName;
 

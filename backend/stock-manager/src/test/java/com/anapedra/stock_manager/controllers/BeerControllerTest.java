@@ -101,7 +101,7 @@ public class BeerControllerTest {
 
 
     @Test
-    @WithMockUser(roles = "CLIENT")  
+    @WithMockUser(roles = "CLIENT")
     void testFindById_ReturnsBeerFilterDTO() throws Exception {
 
         mockMvc.perform(get("/beers/1"))

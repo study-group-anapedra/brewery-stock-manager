@@ -1,6 +1,5 @@
 package com.anapedra.stock_manager.controllers;
 
-import com.anapedra.stock_manager.controllers.BeerController;
 import com.anapedra.stock_manager.domain.dtos.BeerFilterDTO;
 import com.anapedra.stock_manager.domain.dtos.BeerInsertDTO;
 import com.anapedra.stock_manager.domain.dtos.StockInputDTO;

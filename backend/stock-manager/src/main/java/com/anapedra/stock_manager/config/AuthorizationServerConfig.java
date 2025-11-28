@@ -1,6 +1,5 @@
 package com.anapedra.stock_manager.config;
 
-
 import com.anapedra.stock_manager.config.customgrant.CustomPasswordAuthenticationConverter;
 import com.anapedra.stock_manager.config.customgrant.CustomPasswordAuthenticationProvider;
 import com.anapedra.stock_manager.config.customgrant.CustomUserAuthorities;
@@ -46,6 +45,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+
 @Configuration
 public class AuthorizationServerConfig {
 

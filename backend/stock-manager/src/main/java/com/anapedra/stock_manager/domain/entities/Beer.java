@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Entity
-@Table(name = "beers")
+@Table(name = "tb_beers")
 public class Beer {
 
     @Id

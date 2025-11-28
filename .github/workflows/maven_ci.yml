@@ -1,18 +1,15 @@
 name: Java CI com Maven (Build e Testes)
 
-# 1. Quando o workflow será ativado
 on:
   push:
     branches: [ "develop" ]
   pull_request:
     branches: [ "develop" ]
 
-# O 'job' que será o seu status check obrigatório no GitHub Ruleset
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     
-    # Define as permissões de acesso (Apenas leitura para o código é suficiente)
     permissions:
       contents: read
       
@@ -20,30 +17,31 @@ jobs:
     - name: Checkout do Código
       uses: actions/checkout@v4
       
-    # 1. Configurar o ambiente Java 21
     - name: Configurar JDK 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: 'maven' # Adiciona cache para dependências do Maven (acelera o processo)
+        cache: 'maven'
 
-    # 2. Compilar e Rodar Testes
+    # PASSO 1: Compilar e Rodar Testes (Navega para a subpasta)
     - name: Rodar Testes Unitários e Criar Build com Maven
-      # CORREÇÃO APLICADA: Deve incluir o caminho do pom.xml
-      run: mvn -B clean install --file backend/stock-manager/pom.xml
+      run: |
+        cd backend/stock-manager
+        mvn -B clean install
       
-    # 3. Gerar o relatório JaCoCo (Cobertura de Testes)
+    # PASSO 2: Gerar o relatório JaCoCo (Navega para a subpasta)
     - name: Gerar Relatório JaCoCo (Cobertura)
-      # CORREÇÃO APLICADA: Deve incluir o caminho do pom.xml
-      run: mvn jacoco:report --file backend/stock-manager/pom.xml
+      run: |
+        cd backend/stock-manager
+        mvn jacoco:report
       
-    # 4. Upload do JAR de Build (Artefato)
+    # PASSO 3: Upload do JAR de Build (Artefato)
     - name: Upload do JAR de Build (Artefato)
       uses: actions/upload-artifact@v4
       with:
         name: stock-manager-jar
-        # CORREÇÃO APLICADA: Deve apontar para a subpasta target
+        # O caminho já está correto para o upload do artefato
         path: backend/stock-manager/target/*.jar 
         if-no-files-found: error
         retention-days: 1

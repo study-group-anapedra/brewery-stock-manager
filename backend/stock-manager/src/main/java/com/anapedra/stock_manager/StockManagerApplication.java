@@ -14,7 +14,7 @@ import java.util.List;
 
 @SpringBootApplication
 public class StockManagerApplication  {
-
+//
 //    private final BeerRepository beerRepository;
 //    private final CategoryRepository categoryRepository;
 //    private final UserRepository userRepository;
@@ -44,7 +44,7 @@ public class StockManagerApplication  {
 	public static void main(String[] args) {
 		SpringApplication.run(StockManagerApplication.class, args);
 	}
-
+//
 //    @Override
 //    public void run(String... args) throws Exception {
 //        List<Category> categories = new ArrayList<>();

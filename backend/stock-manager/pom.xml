@@ -78,6 +78,13 @@
     </dependency>
 
     <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>42.7.5</version>
+    </dependency>
+
+
+    <dependency>
         <groupId>org.springframework.security</groupId>
         <artifactId>spring-security-oauth2-authorization-server</artifactId>
     </dependency>

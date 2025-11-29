@@ -107,6 +107,28 @@ INSERT INTO tb_beers (id, name, url_img, alcohol_content, price, manufacture_dat
 -- ==========================
 -- Beer Categories (M:N)
 -- ==========================
+-- Estoque Saldo Atual (tb_stock)
+-- ID (beer_id) | QUANTITY | LAST_UPDATE | STATUS
+-- Status Codes: 0 = OK, 1 = Low Stock (< 10), 2 = Out of Stock (= 0)
+-- ==========================
+INSERT INTO tb_stock (beer_id, quantity, last_update, status) VALUES
+-- 1. Estoque OK (quantity > 10)
+(1, 150, CURRENT_TIMESTAMP, 0), -- Pilsen Leve: OK
+(2, 50, CURRENT_TIMESTAMP, 0),  -- IPA Artesanal: OK
+(3, 12, CURRENT_TIMESTAMP, 0),  -- Weizen Tradicional: OK (acima do limite 10)
+
+-- 2. Estoque Baixo (1 <= quantity <= 10)
+(4, 9, CURRENT_TIMESTAMP, 1),   -- Stout de Café: LOW STOCK
+(5, 1, CURRENT_TIMESTAMP, 1),   -- Gose Salgada: LOW STOCK
+(6, 10, CURRENT_TIMESTAMP, 1),  -- Tripel Clássica: LOW STOCK (no limite 10)
+
+-- 3. Fora de Estoque (quantity = 0)
+(7, 0, CURRENT_TIMESTAMP, 2),   -- Double IPA: OUT OF STOCK
+(8, 0, CURRENT_TIMESTAMP, 2),   -- Witbier Cítrica: OUT OF STOCK
+
+-- 4. Mais Estoque OK para completar
+(9, 25, CURRENT_TIMESTAMP, 0),  -- Porter Defumada: OK
+(10, 80, CURRENT_TIMESTAMP, 0); -- Saison de Frutas: OK
 -- ==========================
 -- Beer Categories (M:N)
 -- CORREÇÃO: Nome da tabela de junção corrigido para 'beer_category'

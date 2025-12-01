@@ -10,15 +10,26 @@ import java.util.List;
 public interface StockService {
 
     Page<BeerStockDTO> findAllBeer(
-        Long categoryId, 
-        String categoryDescription, 
-        String beerDescription, 
-        Integer minQuantity, 
-        Integer maxQuantity, 
+        Long categoryId,
+        String categoryDescription,
+        String beerDescription,
+        Integer minQuantity,
+        Integer maxQuantity,
         Pageable pageable
     );
 
     BeerStockDTO findById(Long id);
 
     List<BeerStockDTO> getExpiredBeersReport(LocalDate referenceDate);
+
+    List<BeerStockDTO> findUsingPlpgsqlFunction(
+            Long beerId,
+            String beerDescription,
+            Integer minQuantity,
+            Integer maxQuantity,
+            Integer daysUntilExpiry,
+            Integer pageSize,
+            Integer pageNumber
+    );
+
 }

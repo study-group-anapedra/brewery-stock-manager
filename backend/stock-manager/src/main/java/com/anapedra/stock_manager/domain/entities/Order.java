@@ -24,7 +24,7 @@ public class Order implements Serializable {
     @Column(columnDefinition = "TIMESTAMP WITHOUT TIME ZONE")
     //@JsonFormat(shape = JsonFormat.Shape.STRING,pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'",timezone = "GMT")
     private Instant momentAt;
-    private Integer orderStatus;
+   // private Integer orderStatus;
 
     @ManyToOne
     @JoinColumn(name = "clientId")
@@ -36,13 +36,14 @@ public class Order implements Serializable {
     @OneToMany(mappedBy = "id.order", cascade = CascadeType.PERSIST)
     private Set<OrderItem> items = new HashSet<>();
 
-    public Order(Long id,Instant momentAt, User client) {
+    public Order(Long id, Instant momentAt, User client, Payment payment) {
         this.id = id;
         this.momentAt = momentAt;
         this.client = client;
-        setOrderStatus(OrderStatus.WAITING_PAYMENT);
-
+        this.payment = payment;
     }
+
+
 
     public Order() {
 
@@ -81,15 +82,7 @@ public class Order implements Serializable {
         this.id = id;
     }
 
-    public OrderStatus getOrderStatus() {
-        return OrderStatus.valueOf(orderStatus);
-    }
 
-    public void setOrderStatus(OrderStatus orderStatus) {
-        if (orderStatus != null){
-            this.orderStatus = orderStatus.getCode();
-        }
-    }
 
     public User getClient() {
         return client;

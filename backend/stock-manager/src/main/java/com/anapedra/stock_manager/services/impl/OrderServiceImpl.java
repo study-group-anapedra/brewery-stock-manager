@@ -3,25 +3,27 @@ package com.anapedra.stock_manager.services.impl;
 import com.anapedra.stock_manager.domain.dtos.OrderDTO;
 import com.anapedra.stock_manager.domain.entities.Order;
 import com.anapedra.stock_manager.domain.entities.OrderItem;
+import com.anapedra.stock_manager.domain.entities.Payment;
 import com.anapedra.stock_manager.domain.entities.User;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.OrderRepository;
 import com.anapedra.stock_manager.repositories.UserRepository;
 import com.anapedra.stock_manager.services.AuthService;
 import com.anapedra.stock_manager.services.OrderService;
-
 import com.anapedra.stock_manager.services.UserService;
 import com.anapedra.stock_manager.services.exceptions.ForbiddenException;
 import com.anapedra.stock_manager.services.exceptions.InsufficientStockException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-
-import java.util.Optional;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,8 +35,13 @@ public class OrderServiceImpl implements OrderService {
     private final BeerRepository beerRepository;
     private final UserRepository userRepository;
 
-
-    public OrderServiceImpl(AuthService authService, UserService userService, OrderRepository orderRepository, BeerRepository beerRepository, UserRepository userRepository) {
+    public OrderServiceImpl(
+            AuthService authService,
+            UserService userService,
+            OrderRepository orderRepository,
+            BeerRepository beerRepository,
+            UserRepository userRepository
+    ) {
         this.authService = authService;
         this.userService = userService;
         this.orderRepository = orderRepository;
@@ -42,92 +49,197 @@ public class OrderServiceImpl implements OrderService {
         this.userRepository = userRepository;
     }
 
+    // -------------------------------------------------------------
+    // CREATE
+    // -------------------------------------------------------------
+
     @Transactional
     @Override
     public OrderDTO save(OrderDTO dto) {
-        var authenticatedUser = Optional.ofNullable(userService.authenticated())
-                .orElseThrow(() -> new ForbiddenException("User not authenticated"));
 
-        var order = new Order();
-        order.setClient(authenticatedUser);
+        // Agora sempre pega o cliente do usuário logado 
+        User authenticated = userService.authenticated();
+        if (authenticated == null) {
+            throw new ForbiddenException("User not authenticated");
+        }
+
+        Order order = new Order();
+        order.setClient(authenticated);
         order.setMomentAt(Instant.now());
+
+
+
         copyDtoToEntity(dto, order);
 
-        order = orderRepository.save(order);
+        orderRepository.save(order);
         return new OrderDTO(order, order.getItems());
     }
 
+    // -------------------------------------------------------------
+    // FIND BY ID
+    // -------------------------------------------------------------
 
     @Transactional(readOnly = true)
     @Override
     public OrderDTO findById(Long id) {
-        var entity = orderRepository.findById(id)
+        Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
-        authService.validateSelfOrAdmin(entity.getClient().getId());
-        return new OrderDTO(entity, entity.getItems());
+
+        authService.validateSelfOrAdmin(order.getClient().getId());
+
+        return new OrderDTO(order, order.getItems());
     }
 
+    // -------------------------------------------------------------
+    // LIST ALL
+    // -------------------------------------------------------------
 
     @Transactional(readOnly = true)
     @Override
     public Page<OrderDTO> findAll(Pageable pageable) {
-        // Implementação do findAll
-        // Se necessário, adicione lógica de validação de permissão aqui
-        return orderRepository.findAll(pageable).map(order -> new OrderDTO(order, order.getItems()));
+        return orderRepository.findAll(pageable)
+                .map(order -> new OrderDTO(order, order.getItems()));
     }
 
+
+
+
+
+
+    // -------------------------------------------------------------
+    // UPDATE
+    // -------------------------------------------------------------
 
     @Transactional
     @Override
     public OrderDTO update(Long id, OrderDTO dto) {
-        var existingOrder = orderRepository.findById(id)
+        Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
-        authService.validateSelfOrAdmin(existingOrder.getClient().getId());
 
-        existingOrder.setOrderStatus(dto.getOrderStatus());
-        copyDtoToEntity(dto, existingOrder);
+        authService.validateSelfOrAdmin(order.getClient().getId());
 
-        existingOrder = orderRepository.save(existingOrder);
-        return new OrderDTO(existingOrder, existingOrder.getItems());
+
+
+        copyDtoToEntity(dto, order);
+
+        orderRepository.save(order);
+        return new OrderDTO(order, order.getItems());
     }
+
+
+
+
+    // -------------------------------------------------------------
+    // DELETE
+    // -------------------------------------------------------------
+
+
+
 
     @Transactional
     @Override
     public void delete(Long id) {
-        var existingOrder = orderRepository.findById(id)
+        Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
-        authService.validateSelfOrAdmin(existingOrder.getClient().getId());
-        orderRepository.delete(existingOrder);
+
+        authService.validateSelfOrAdmin(order.getClient().getId());
+        orderRepository.delete(order);
     }
 
+    // -------------------------------------------------------------
+    // FILTER SEARCH
+    // -------------------------------------------------------------
+
+
+
+
+
+
+
+    // -------------------------------------------------------------
+    // DTO → ENTITY
+    // -------------------------------------------------------------
 
     private void copyDtoToEntity(OrderDTO dto, Order entity) {
-        entity.setOrderStatus(dto.getOrderStatus());
-        entity.setItems(dto.getItems().stream().map(itemDTO -> {
-            var beer = beerRepository.findById(itemDTO.getBeerId())
-                    .orElseThrow(() -> new IllegalArgumentException("Beer not found: " + itemDTO.getBeerId()));
 
-            if (itemDTO.getQuantity() > beer.getStock().getQuantity()) {
-                throw new InsufficientStockException("Insufficient stock for beer ID: "
-                        + beer.getId() + ". Available: " + beer.getStock().getQuantity() +
-                        ", Requested: " + itemDTO.getQuantity());
-            }
+        // MOMENTO
+        if (dto.getMomentAt() != null) {
+            entity.setMomentAt(dto.getMomentAt());
+        }
 
-            var orderItem = new OrderItem(entity, beer, itemDTO.getQuantity());
-            orderItem.decreaseStock(itemDTO.getQuantity());
-            return orderItem;
-        }).collect(Collectors.toSet()));
+        // PAYMENT
+        if (dto.getPayment() != null) {
+            Payment payment = new Payment();
+            payment.setMoment(dto.getPayment().getMoment());
+            payment.setOrder(entity);
+            entity.setPayment(payment);
+        }
+
+        // ORDER ITEMS
+        if (dto.getItems() != null) {
+            Set<OrderItem> items = dto.getItems().stream().map(itemDTO -> {
+
+                var beer = beerRepository.findById(itemDTO.getBeerId())
+                        .orElseThrow(() -> new IllegalArgumentException("Beer not found: " + itemDTO.getBeerId()));
+
+                if (itemDTO.getQuantity() > beer.getStock().getQuantity()) {
+                    throw new InsufficientStockException(
+                            "Insufficient stock for beer ID " + beer.getId()
+                                    + ". Available: " + beer.getStock().getQuantity()
+                                    + ", Requested: " + itemDTO.getQuantity()
+                    );
+                }
+
+                OrderItem orderItem = new OrderItem(entity, beer, itemDTO.getQuantity());
+                orderItem.decreaseStock(itemDTO.getQuantity());
+                return orderItem;
+
+            }).collect(Collectors.toSet());
+
+            entity.setItems(items);
+        }
     }
-    
-    @Transactional
-    @Override
-    public Page<OrderDTO> find(Long clientId, String nameClient,String cpfClient, Pageable pageable){
+
+
+
+
+
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> find(
+            Long clientId,
+            String nameClient,
+            String cpfClient,
+            String minDate,
+            String maxDate,
+            Pageable pageable) {
+
         authService.validateAdmin();
-        User client=(clientId == 0) ? null : userRepository.getOne(clientId);
-        Page<Order> page=orderRepository.find(client,nameClient,cpfClient,pageable);
-        orderRepository.findOrder(page.stream().collect(Collectors.toList()));
+
+        User client = (clientId != null && clientId > 0) ? userRepository.findById(clientId).orElse(null) : null;
+
+        Instant minInstant = null;
+        Instant maxInstant = null;
+
+        // Apenas se minDate for informado, defina o Instant
+        if (minDate != null && !minDate.isBlank()) {
+            LocalDate minLD = LocalDate.parse(minDate);
+            minInstant = minLD.atStartOfDay(ZoneOffset.UTC).toInstant();
+        }
+
+        // Apenas se maxDate for informado, defina o Instant
+        if (maxDate != null && !maxDate.isBlank()) {
+            LocalDate maxLD = LocalDate.parse(maxDate);
+            // Garante que o intervalo vá até o final do dia
+            maxInstant = maxLD.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        }
+
+        // Se nenhum parâmetro de filtro for passado (tudo nulo),
+        // a busca retornará todas as orders, conforme desejado.
+        Page<Order> page = orderRepository.find(client, nameClient, cpfClient, minInstant, maxInstant, pageable);
+
+        // Faz fetch da relação cliente
+        orderRepository.findOrder(page.getContent());
+
         return page.map(OrderDTO::new);
     }
-
-
 }

@@ -16,5 +16,12 @@ public interface OrderService {
 
     void delete(Long id);
 
-    Page<OrderDTO> find(Long clientId, String nameClient, String cpfClient, Pageable pageable);
+    Page<OrderDTO> find(
+            Long clientId,
+            String nameClient,
+            String cpfClient,
+            String minInstant,
+            String maxInstant,
+            Pageable pageable
+    );
 }

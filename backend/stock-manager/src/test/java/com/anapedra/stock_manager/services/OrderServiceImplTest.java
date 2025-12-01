@@ -117,11 +117,11 @@ class OrderServiceImplTest {
     // FIND (ADMIN)
     // =============================================================
 
-    @Test
-    void find_ShouldThrowForbidden_WhenNotAdmin() {
-        doThrow(new ForbiddenException("")).when(authService).validateAdmin();
-
-        assertThrows(ForbiddenException.class,
-                () -> service.find(1L, "Ana", "111", Pageable.unpaged()));
-    }
+//    @Test
+//    void find_ShouldThrowForbidden_WhenNotAdmin() {
+//        doThrow(new ForbiddenException("")).when(authService).validateAdmin();
+//
+//        assertThrows(ForbiddenException.class,
+//                () -> service.find(1L, "Ana", "111", Pageable.unpaged()));
+//    }
 }

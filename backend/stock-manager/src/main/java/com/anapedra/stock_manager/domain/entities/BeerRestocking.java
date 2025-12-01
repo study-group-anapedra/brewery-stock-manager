@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "tb_stock_beer")
+@Table(name = "tb_restocking_beer")
 public class BeerRestocking implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -33,18 +33,7 @@ public class BeerRestocking implements Serializable {
 
 
 
-    public void restoreStock(int quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be greater than zero");
-        }
-        Stock stock = getBeer().getStock();
-        if (stock == null) {
-            throw new IllegalStateException("Stock object cannot be null for Beer: " + getBeer().getName());
-        }
-        Integer currentQuantity = stock.getQuantity() != null ? stock.getQuantity() : 0;
-        Integer newQuantity = currentQuantity + quantity;
-        stock.setQuantity(newQuantity);
-    }
+
 
 
 

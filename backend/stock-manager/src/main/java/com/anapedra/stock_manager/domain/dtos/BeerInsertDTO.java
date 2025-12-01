@@ -39,7 +39,6 @@ public class BeerInsertDTO implements Serializable {
 
     private List<CategoryDTO> categories = new ArrayList<>();
 
-    @Valid
     @NotNull(message = "As informações de estoque são obrigatórias")
     private StockInputDTO stock; 
 
@@ -65,10 +64,7 @@ public class BeerInsertDTO implements Serializable {
         this.price = entity.getPrice();
         this.manufactureDate = entity.getManufactureDate();
         this.expirationDate = entity.getExpirationDate();
-
-        if (entity.getStock() != null) {
-            this.stock = new StockInputDTO(entity.getStock());
-        }
+        this.stock = new StockInputDTO(entity.getStock());
 
         entity.getCategories().forEach(category -> this.categories.add(new CategoryDTO(category)));
     }

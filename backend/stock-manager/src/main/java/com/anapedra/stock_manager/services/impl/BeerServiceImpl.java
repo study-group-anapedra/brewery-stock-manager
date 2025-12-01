@@ -72,34 +72,7 @@ public class BeerServiceImpl implements BeerService {
     }
 
 
-    private void copyInsertDtoToEntity(BeerInsertDTO dto, Beer beer) {
-        beer.setName(dto.getName());
-        beer.setUrlImg(dto.getUrlImg());
-        beer.setAlcoholContent(dto.getAlcoholContent());
-        beer.setPrice(dto.getPrice());
-        beer.setManufactureDate(dto.getManufactureDate());
-        beer.setExpirationDate(dto.getExpirationDate());
 
-
-        StockInputDTO stockDTO = dto.getStock();
-        if (stockDTO != null) {
-            if (beer.getStock() == null) {
-                Stock stock = new Stock(stockDTO.getQuantity(), beer);
-                beer.setStock(stock);
-            } else {
-                beer.getStock().setQuantity(stockDTO.getQuantity());
-            }
-        }
-
-        beer.getCategories().clear();
-        if (dto.getCategories() != null && !dto.getCategories().isEmpty()) {
-            Set<Long> categoryIds = dto.getCategories().stream()
-                    .map(CategoryDTO::getId)
-                    .collect(Collectors.toSet());
-            List<Category> categories = categoryRepository.findAllById(categoryIds);
-            beer.getCategories().addAll(categories);
-        }
-    }
 
     @Override
     @Transactional
@@ -133,6 +106,42 @@ public class BeerServiceImpl implements BeerService {
             beerRepository.deleteById(id);
         } catch (DataIntegrityViolationException e) {
             throw new DatabaseException("Falha de integridade referencial");
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private void copyInsertDtoToEntity(BeerInsertDTO dto, Beer beer) {
+        beer.setName(dto.getName());
+        beer.setUrlImg(dto.getUrlImg());
+        beer.setAlcoholContent(dto.getAlcoholContent());
+        beer.setPrice(dto.getPrice());
+        beer.setManufactureDate(dto.getManufactureDate());
+        beer.setExpirationDate(dto.getExpirationDate());
+
+
+                StockInputDTO stockDTO = dto.getStock();
+                Stock stock = new Stock(stockDTO.getQuantity(), beer);
+                beer.setStock(stock);
+
+
+        beer.getCategories().clear();
+        if (dto.getCategories() != null && !dto.getCategories().isEmpty()) {
+            Set<Long> categoryIds = dto.getCategories().stream()
+                    .map(CategoryDTO::getId)
+                    .collect(Collectors.toSet());
+            List<Category> categories = categoryRepository.findAllById(categoryIds);
+            beer.getCategories().addAll(categories);
         }
     }
 

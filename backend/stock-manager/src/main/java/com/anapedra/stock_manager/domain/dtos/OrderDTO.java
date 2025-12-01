@@ -4,11 +4,9 @@ import com.anapedra.stock_manager.domain.entities.Order;
 import com.anapedra.stock_manager.domain.entities.OrderItem;
 import com.anapedra.stock_manager.domain.enums.OrderStatus;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 import java.io.Serializable;
 import java.time.Instant;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -18,47 +16,41 @@ public class OrderDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Long id;
+    private Long clientId;
     private String clientName;
     private String clientCpf;
-    private Long clientId;
-
     private Instant momentAt;
-
     private Double total;
     private Integer totalQuantity;
     private Double totalToPay;
-    @NotNull(message = "Status do pedido é obrigatório")
     private OrderStatus orderStatus;
-    
     private PaymentDTO payment;
 
     @NotEmpty(message = "O pedido deve conter ao menos um item")
     private List<OrderItemDTO> items = new ArrayList<>();
 
-    public OrderDTO() {
-    }
+    public OrderDTO() {}
 
-    public OrderDTO(Long id,Instant momentAt, Long clientId,
-                    OrderStatus orderStatus, PaymentDTO payment) {
+    public OrderDTO(Long id, Long clientId, Instant momentAt, PaymentDTO payment) {
         this.id = id;
-        this.momentAt = momentAt;
         this.clientId = clientId;
-        this.orderStatus = orderStatus;
+        this.momentAt = momentAt;
         this.payment = payment;
     }
 
     public OrderDTO(Order entity) {
         this.id = entity.getId();
+        this.clientId = entity.getClient().getId();
         this.clientName = entity.getClient().getName();
         this.clientCpf = entity.getClient().getCpf();
-        this.clientId = entity.getClient().getId();
-        this.momentAt = entity.getMomentAt();
         this.momentAt = entity.getMomentAt();
         this.total = entity.getTotal();
         this.totalQuantity = entity.getQuantityProduct();
         this.totalToPay = entity.getTotalToPay();
-        this.orderStatus = entity.getOrderStatus() != null ? entity.getOrderStatus() : OrderStatus.WAITING_PAYMENT;
-        
+
+
+
+        // pagamento pode ser null
         if (entity.getPayment() != null) {
             this.payment = new PaymentDTO(entity.getPayment());
         }
@@ -69,13 +61,22 @@ public class OrderDTO implements Serializable {
         orderItems.forEach(item -> this.items.add(new OrderItemDTO(item)));
     }
 
-    // Getters e Setters
+    // Getters & Setters
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(Long clientId) {
+        this.clientId = clientId;
     }
 
     public String getClientName() {
@@ -92,14 +93,6 @@ public class OrderDTO implements Serializable {
 
     public void setClientCpf(String clientCpf) {
         this.clientCpf = clientCpf;
-    }
-
-    public Long getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(Long clientId) {
-        this.clientId = clientId;
     }
 
     public Instant getMomentAt() {
@@ -134,8 +127,6 @@ public class OrderDTO implements Serializable {
         this.totalToPay = totalToPay;
     }
 
-
-
     public OrderStatus getOrderStatus() {
         return orderStatus;
     }
@@ -163,8 +154,8 @@ public class OrderDTO implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof OrderDTO orderDTO)) return false;
-        return Objects.equals(id, orderDTO.id);
+        if (!(o instanceof OrderDTO other)) return false;
+        return Objects.equals(id, other.id);
     }
 
     @Override

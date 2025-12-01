@@ -9,9 +9,9 @@ public class OrderItemDTO implements Serializable {
     private static final long serialVersionUID=1L;
 
     private Long beerId;
-    private String title;
+    private String beerName;
     private Integer quantity;
-    private Double bookPrice;
+    private Double beerPrice;
     private Double subTotal;
     private String imgUrl;
 
@@ -28,10 +28,10 @@ public class OrderItemDTO implements Serializable {
 
     public OrderItemDTO(OrderItem entity) {
         beerId = entity.getBeer().getId();
-       title = entity.getBeer().getName();
+       beerName = entity.getBeer().getName();
        quantity = entity.getQuantity();
        subTotal=entity.getSubTotal();
-       bookPrice = entity.getBeer().getPrice();
+       beerPrice = entity.getBeer().getPrice();
        imgUrl=entity.getBeer().getUrlImg();
 
     }
@@ -44,13 +44,7 @@ public class OrderItemDTO implements Serializable {
         this.beerId = beerId;
     }
 
-    public String getTitle() {
-        return title;
-    }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
 
     public Integer getQuantity() {
         return quantity;
@@ -76,8 +70,12 @@ public class OrderItemDTO implements Serializable {
         this.imgUrl = imgUrl;
     }
 
-    public Double getBookPrice() {
-        return bookPrice;
+    public String getBeerName() {
+        return beerName;
+    }
+
+    public Double getBeerPrice() {
+        return beerPrice;
     }
 
     @Override

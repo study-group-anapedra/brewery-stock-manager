@@ -119,7 +119,7 @@ public class BeerControllerTest {
 
 
 // test
-    
+
     @Test
     @WithMockUser(roles = "CLIENT")
     void testFindAll_ReturnsPagedBeerFilterDTO() throws Exception {

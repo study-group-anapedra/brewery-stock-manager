@@ -6,10 +6,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @SuppressWarnings("serial")
 @Entity
@@ -30,6 +27,8 @@ public class User implements UserDetails {
     private Instant momentUpdate;
     private String cpf;
 
+    @OneToMany(mappedBy = "client")
+    private List<Order> orders=new ArrayList<>();
 
     @ManyToMany
     @JoinTable(name = "tb_user_role",
@@ -125,6 +124,10 @@ public class User implements UserDetails {
 
     public void setCpf(String cpf) {
         this.cpf = cpf;
+    }
+
+    public List<Order> getOrders() {
+        return orders;
     }
 
     public Set<Role> getRoles() {

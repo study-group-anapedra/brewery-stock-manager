@@ -9,7 +9,7 @@ public class OrderItemDTO implements Serializable {
     private static final long serialVersionUID=1L;
 
     private Long beerId;
-    private String beerName;
+    private String title;
     private Integer quantity;
     private Double beerPrice;
     private Double subTotal;
@@ -27,8 +27,8 @@ public class OrderItemDTO implements Serializable {
     }
 
     public OrderItemDTO(OrderItem entity) {
-        beerId = entity.getBeer().getId();
-       beerName = entity.getBeer().getName();
+       beerId = entity.getBeer().getId();
+       title = entity.getBeer().getName();
        quantity = entity.getQuantity();
        subTotal=entity.getSubTotal();
        beerPrice = entity.getBeer().getPrice();
@@ -40,11 +40,9 @@ public class OrderItemDTO implements Serializable {
         return beerId;
     }
 
-    public void setBeerId(Long livroId) {
+    public void setBeerId(Long beerId) {
         this.beerId = beerId;
     }
-
-
 
     public Integer getQuantity() {
         return quantity;
@@ -54,28 +52,20 @@ public class OrderItemDTO implements Serializable {
         this.quantity = quantity;
     }
 
-    public Double getSubTotal() {
-        return subTotal;
-    }
-
-    public void setSubTotal(Double subTotal) {
-        this.subTotal = subTotal;
-    }
-
-    public String getImgUrl() {
-        return imgUrl;
-    }
-
-    public void setImgUrl(String imgUrl) {
-        this.imgUrl = imgUrl;
-    }
-
-    public String getBeerName() {
-        return beerName;
+    public String getTitle() {
+        return title;
     }
 
     public Double getBeerPrice() {
         return beerPrice;
+    }
+
+    public Double getSubTotal() {
+        return subTotal;
+    }
+
+    public String getImgUrl() {
+        return imgUrl;
     }
 
     @Override

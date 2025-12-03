@@ -57,14 +57,14 @@ public class BeerInsertDTO implements Serializable {
     }
 
     public BeerInsertDTO(Beer entity) {
-        this.id = entity.getId();
-        this.name = entity.getName();
-        this.urlImg = entity.getUrlImg();
-        this.alcoholContent = entity.getAlcoholContent();
-        this.price = entity.getPrice();
-        this.manufactureDate = entity.getManufactureDate();
-        this.expirationDate = entity.getExpirationDate();
-        this.stock = new StockInputDTO(entity.getStock());
+        id = entity.getId();
+        name = entity.getName();
+        urlImg = entity.getUrlImg();
+        alcoholContent = entity.getAlcoholContent();
+        price = entity.getPrice();
+        manufactureDate = entity.getManufactureDate();
+        expirationDate = entity.getExpirationDate();
+        stock = new StockInputDTO(entity.getStock());
 
         entity.getCategories().forEach(category -> this.categories.add(new CategoryDTO(category)));
     }

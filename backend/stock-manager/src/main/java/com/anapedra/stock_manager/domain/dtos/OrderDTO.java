@@ -26,34 +26,39 @@ public class OrderDTO implements Serializable {
     private OrderStatus orderStatus;
     private PaymentDTO payment;
 
+
+
     @NotEmpty(message = "O pedido deve conter ao menos um item")
     private List<OrderItemDTO> items = new ArrayList<>();
 
     public OrderDTO() {}
 
-    public OrderDTO(Long id, Long clientId, Instant momentAt, PaymentDTO payment) {
-        this.id = id;
+    public OrderDTO(Long clientId ,Instant momentAt,OrderStatus orderStatus,PaymentDTO payment) {
         this.clientId = clientId;
         this.momentAt = momentAt;
+        this.orderStatus = orderStatus;
         this.payment = payment;
+
     }
 
     public OrderDTO(Order entity) {
-        this.id = entity.getId();
-        this.clientId = entity.getClient().getId();
-        this.clientName = entity.getClient().getName();
-        this.clientCpf = entity.getClient().getCpf();
-        this.momentAt = entity.getMomentAt();
-        this.total = entity.getTotal();
-        this.totalQuantity = entity.getQuantityProduct();
-        this.totalToPay = entity.getTotalToPay();
+        id = entity.getId();
+        clientId = entity.getClient().getId();
+        clientName = entity.getClient().getName();
+        clientCpf = entity.getClient().getCpf();
+        momentAt = entity.getMomentAt();
+        total = entity.getTotal();
+        totalQuantity = entity.getQuantityProduct();
+        totalToPay = entity.getTotalToPay();
+        orderStatus = (entity.getPayment() == null || entity.getOrderStatus() == null) ? OrderStatus.WAITING_PAYMENT : entity.getOrderStatus() ;
+        payment = (entity.getPayment() != null) ? new PaymentDTO(entity.getPayment()) : null;
+        entity.getItems().forEach(item ->
+                this.items.add(new OrderItemDTO(item))
+        );
 
 
 
-        // pagamento pode ser null
-        if (entity.getPayment() != null) {
-            this.payment = new PaymentDTO(entity.getPayment());
-        }
+
     }
 
     public OrderDTO(Order entity, Set<OrderItem> orderItems) {
@@ -163,3 +168,6 @@ public class OrderDTO implements Serializable {
         return Objects.hash(id);
     }
 }
+
+
+

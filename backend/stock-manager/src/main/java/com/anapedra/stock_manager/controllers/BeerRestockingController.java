@@ -51,7 +51,7 @@ public class BeerRestockingController {
         // Cria a URI do novo recurso (melhor prática REST)
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
-                .buildAndExpand(newDto.getId())
+                .buildAndExpand(newDto.getBeerId())
                 .toUri();
         
         // Retorna 201 Created

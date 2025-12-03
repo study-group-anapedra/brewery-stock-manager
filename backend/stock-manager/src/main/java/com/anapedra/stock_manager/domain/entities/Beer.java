@@ -46,8 +46,6 @@ public class Beer {
     @OneToOne(mappedBy = "beer", cascade = CascadeType.ALL, orphanRemoval = true)    @JoinColumn(name = "stock_id") // <--- ISTO FAZ A TABELA BEER SER A PROPRIETÁRIA
     private Stock stock;
 
-
-
     @OneToMany(mappedBy = "id.beer")
     private Set<OrderItem> items=new HashSet<>();
 

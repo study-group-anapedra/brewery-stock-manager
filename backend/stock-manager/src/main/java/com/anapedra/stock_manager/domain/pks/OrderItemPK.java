@@ -36,9 +36,9 @@ public class OrderItemPK implements Serializable {
         this.beer = new Beer();
         this.beer.setId(beerId);
     }
-    public OrderItemPK(Long liveoId) {
+    public OrderItemPK(Long beerId) {
         this.beer = new Beer();
-        this.beer.setId(liveoId);
+        this.beer.setId(beerId);
     }
 
     public Order getOrder() {

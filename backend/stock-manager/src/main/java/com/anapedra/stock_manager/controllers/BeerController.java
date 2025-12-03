@@ -1,42 +1,47 @@
 package com.anapedra.stock_manager.controllers;
 
-import com.anapedra.stock_manager.domain.dtos.BeerFilterDTO;
 import com.anapedra.stock_manager.domain.dtos.BeerInsertDTO;
+import com.anapedra.stock_manager.domain.dtos.BeerStockDTO;
 import com.anapedra.stock_manager.services.BeerService;
-import jakarta.validation.Valid;
+import com.anapedra.stock_manager.services.StockService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDate;
+import java.util.List;
 
 @RestController
-@RequestMapping(value = "/beers")
-@CrossOrigin(origins = "*")
+@RequestMapping("/beers")
 public class BeerController {
 
-    private final BeerService beerService;
+    @Autowired
+    private StockService beerService;
 
-    public BeerController(BeerService beerService) {
-        this.beerService = beerService;
-    }
+    @Autowired
+    private BeerService service;
 
-    // Rota: GET /beers
-    // Permissão: ADMIN ou CLIENT (Leitura)
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_CLIENT')")
+    // ------------------------------------------------------------
+    // 1. Filtro padrão com paginação (JPQL)
+    // ------------------------------------------------------------
     @GetMapping
-    public ResponseEntity<Page<BeerFilterDTO>> findAll(
-            @RequestParam(value = "categoryId", required = false) Long categoryId,
-            @RequestParam(value = "categoryDescription", defaultValue = "") String categoryDescription,
-            @RequestParam(value = "beerDescription", defaultValue = "") String beerDescription,
-            @RequestParam(value = "minQuantity", required = false) Integer minQuantity,
-            @RequestParam(value = "maxQuantity", required = false) Integer maxQuantity,
-            Pageable pageable) {
+    public ResponseEntity<Page<BeerStockDTO>> findAllBeer(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "") String categoryDescription,
+            @RequestParam(defaultValue = "") String beerDescription,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
 
-        Page<BeerFilterDTO> page = beerService.findAllBeer(
+        PageRequest pageable = PageRequest.of(page, size);
+
+        Page<BeerStockDTO> result = beerService.findAllBeer(
                 categoryId,
                 categoryDescription,
                 beerDescription,
@@ -44,50 +49,65 @@ public class BeerController {
                 maxQuantity,
                 pageable
         );
-        return ResponseEntity.ok(page);
+
+        return ResponseEntity.ok(result);
     }
 
+    // ------------------------------------------------------------
+    // 2. Consulta usando função PL/pgSQL (NativeQuery)
+    // ------------------------------------------------------------
+    @GetMapping("/native")
+    public ResponseEntity<List<BeerStockDTO>> filtrarUsandoFuncao(
+            @RequestParam(required = false) Long beerId,
+            @RequestParam(defaultValue = "") String beerDescription,
+            @RequestParam(required = false) Integer minQuantity,
+            @RequestParam(required = false) Integer maxQuantity,
+            @RequestParam(required = false) Integer daysUntilExpiry,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(defaultValue = "0") Integer pageNumber
+    ) {
+        List<BeerStockDTO> list = beerService.findUsingPlpgsqlFunction(
+                beerId,
+                beerDescription,
+                minQuantity,
+                maxQuantity,
+                daysUntilExpiry,
+                pageSize,
+                pageNumber
+        );
 
-    // Rota: GET /beers/{id}
-    // Permissão: ADMIN ou CLIENT (Leitura)
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_CLIENT')")
-    @GetMapping(value = "/{id}")
-    public ResponseEntity<BeerFilterDTO> findById(@PathVariable Long id) {
-        BeerFilterDTO dto = beerService.findById(id);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(list);
     }
 
+    // ------------------------------------------------------------
+    // 3. Relatório — Cervejas vencidas
+    // ------------------------------------------------------------
+    @GetMapping("/expired")
+    public ResponseEntity<List<BeerStockDTO>> getExpiredBeers(
+            @RequestParam String referenceDate
+    ) {
 
-    // Rota: POST /beers
-    // Permissão: ADMIN (Escrita)
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+        LocalDate date = LocalDate.parse(referenceDate);
+
+        List<BeerStockDTO> list = beerService.getExpiredBeersReport(date);
+
+        return ResponseEntity.ok(list);
+    }
+
     @PostMapping
-    public ResponseEntity<BeerInsertDTO> insert(@Valid @RequestBody BeerInsertDTO dto) {
-        BeerInsertDTO newDto = beerService.insert(dto);
+    public ResponseEntity<BeerInsertDTO> insert(@RequestBody BeerInsertDTO dto) {
+        BeerInsertDTO newDto = service.insert(dto);
         URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(newDto.getId())
                 .toUri();
+
         return ResponseEntity.created(uri).body(newDto);
     }
 
-
-
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @PutMapping(value = "/{id}")
-    public ResponseEntity<BeerInsertDTO> update(
-            @PathVariable Long id,
-            @Valid @RequestBody BeerInsertDTO dto) {
-        BeerInsertDTO updated = beerService.update(id, dto);
-        return ResponseEntity.ok(updated);
-    }
-
-
-
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @DeleteMapping(value = "/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        beerService.delete(id);
+        service.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

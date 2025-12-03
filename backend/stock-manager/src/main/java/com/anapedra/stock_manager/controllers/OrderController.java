@@ -22,6 +22,22 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+
+    @GetMapping
+    public ResponseEntity<Page<OrderDTO>> findAll(
+            @RequestParam(value = "clientId", required = false) Long clientId,
+            @RequestParam(value = "nameClient", required = false) String nameClient,
+            @RequestParam(value = "cpfClient", required = false) String cpfClient,
+            @RequestParam(value = "minDate", required = false) String minDate,
+            @RequestParam(value = "maxDate", required = false) String maxDate,
+            Pageable pageable
+    ) {
+        Page<OrderDTO> list = orderService.find(clientId, nameClient, cpfClient, minDate, maxDate, pageable);
+        return ResponseEntity.ok(list);
+    }
+
+
+
     @PostMapping
     public ResponseEntity<OrderDTO> save(@Valid @RequestBody OrderDTO dto) {
         OrderDTO newOrder = orderService.save(dto);
@@ -40,11 +56,7 @@ public class OrderController {
     }
 
 
-//    @GetMapping
-//    public ResponseEntity<Page<OrderDTO>> findAll(Pageable pageable) {
-//        Page<OrderDTO> list = orderService.findAll(pageable);
-//        return ResponseEntity.ok(list);
-//    }
+
 
     @PutMapping(value = "/{id}")
     public ResponseEntity<OrderDTO> update(@PathVariable Long id, @Valid @RequestBody OrderDTO dto) {
@@ -59,14 +71,5 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
-    public ResponseEntity<Page<OrderDTO>> findAll(
 
-            @RequestParam(value = "clientId",defaultValue = "0")Long clientId,
-            @RequestParam(value = "nameClient",defaultValue = "") String nameClient,
-            @RequestParam(value = "cpfClient",defaultValue = "") String cpfClient,
-            Pageable pageable) {
-        Page<OrderDTO> list = orderService.find(clientId,nameClient,cpfClient,pageable);
-        return ResponseEntity.ok().body(list);
-    }
 }

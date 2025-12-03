@@ -27,6 +27,12 @@
         <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
+    <dependency>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-core</artifactId>
+    </dependency>
+
+
     <!--Spring Boot DevTools (recarrega o app automaticamente em dev mode) -->
     <dependency>
         <groupId>org.springframework.boot</groupId>

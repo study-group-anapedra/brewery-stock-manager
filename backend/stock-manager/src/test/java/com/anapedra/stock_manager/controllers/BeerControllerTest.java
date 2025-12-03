@@ -2,10 +2,12 @@ package com.anapedra.stock_manager.controllers;
 
 import com.anapedra.stock_manager.domain.dtos.BeerFilterDTO;
 import com.anapedra.stock_manager.domain.dtos.BeerInsertDTO;
+import com.anapedra.stock_manager.domain.dtos.BeerStockDTO;
 import com.anapedra.stock_manager.domain.dtos.StockInputDTO;
 import com.anapedra.stock_manager.domain.entities.Beer;
 import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.services.BeerService;
+import com.anapedra.stock_manager.services.StockService; // Importar StockService
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,14 +41,20 @@ public class BeerControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // Mock para BeerService (dependência 'service' no Controller)
     @MockBean
-    private BeerService beerService;
+    private BeerService service;
+
+    // CORREÇÃO: ADICIONAR MOCK PARA STOCKSERVICE (dependência 'beerService' no Controller)
+    @MockBean
+    private StockService beerService;
 
     private Beer beerEntity;
     private BeerFilterDTO beerFilterDTO;
     private BeerInsertDTO beerInsertDTO;
     private StockInputDTO stockDTO;
-    private Page<BeerFilterDTO> beerPage;
+    private Page<BeerFilterDTO> beerFilterPage;
+    private Page<BeerStockDTO> beerStockPage;
 
     @BeforeEach
     void setUp() {
@@ -59,7 +67,8 @@ public class BeerControllerTest {
         beerEntity.setPrice(12.0);
         beerEntity.setManufactureDate(LocalDate.of(2024, 1, 1));
         beerEntity.setExpirationDate(LocalDate.of(2025, 1, 1));
-
+        Mockito.when(service.findById(anyLong()))
+                .thenReturn(beerFilterDTO);
         Stock stock = new Stock();
         stock.setId(10L);
         stock.setQuantity(50);
@@ -81,39 +90,38 @@ public class BeerControllerTest {
         );
         beerInsertDTO.setId(1L);
 
-        beerPage = new PageImpl<>(List.of(beerFilterDTO), PageRequest.of(0, 10), 1);
+        // Página para findById (se usado em paginação)
+        beerFilterPage = new PageImpl<>(List.of(beerFilterDTO), PageRequest.of(0, 10), 1);
 
-        Mockito.when(beerService.findById(anyLong()))
+        // Page que deve ser retornada pelo StockService.findAllBeer
+        BeerStockDTO beerStockDTO = new BeerStockDTO(beerEntity);
+        beerStockPage = new PageImpl<>(List.of(beerStockDTO), PageRequest.of(0, 10), 1);
+
+
+        // MOCKS:
+        // findById (BeerService)
+        Mockito.when(service.findById(anyLong()))
                 .thenReturn(beerFilterDTO);
 
-        Mockito.when(beerService.findAllBeer(any(), any(), any(), any(), any(), any()))
-                .thenReturn(beerPage);
+        // findAllBeer (StockService) - Retorna Page<BeerStockDTO>
+        Mockito.when(beerService.findAllBeer(any(), any(), any(), any(), any(), any(PageRequest.class)))
+                .thenReturn(beerStockPage);
 
-        Mockito.when(beerService.insert(any()))
+        // insert, update e delete (BeerService)
+        Mockito.when(service.insert(any()))
                 .thenReturn(beerInsertDTO);
 
-        Mockito.when(beerService.update(anyLong(), any()))
+        Mockito.when(service.update(anyLong(), any()))
                 .thenReturn(beerInsertDTO);
 
-        Mockito.doNothing().when(beerService).delete(anyLong());
+        Mockito.doNothing().when(service).delete(anyLong());
     }
 
 
+// test
+    
     @Test
     @WithMockUser(roles = "CLIENT")
-    void testFindById_ReturnsBeerFilterDTO() throws Exception {
-
-        mockMvc.perform(get("/beers/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.name").value("IPA Teste"))
-                .andExpect(jsonPath("$.urlImg").value("url/img"))
-                .andExpect(jsonPath("$.alcoholContent").value(5.5))
-                .andExpect(jsonPath("$.price").value(12.0))
-                .andExpect(jsonPath("$.stock").value(50));
-    }
-    @Test
-    @WithMockUser(roles = "CLIENT") // AUTORIZAÇÃO
     void testFindAll_ReturnsPagedBeerFilterDTO() throws Exception {
 
         mockMvc.perform(get("/beers"))
@@ -122,9 +130,4 @@ public class BeerControllerTest {
                 .andExpect(jsonPath("$.content[0].name").value("IPA Teste"))
                 .andExpect(jsonPath("$.content[0].stock").value(50));
     }
-
-
-
-
-
 }

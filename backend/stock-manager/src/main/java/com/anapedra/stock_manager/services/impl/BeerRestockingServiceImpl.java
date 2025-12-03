@@ -45,6 +45,7 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     public BeerRestockingDTO create(BeerRestockingDTO dto) {
         BeerRestocking entity = new BeerRestocking();
         copyDtoToEntity(dto, entity);
+        entity.getBeer().getStock().setQuantity(entity.getBeer().getStock().getQuantity() + entity.getQuantity());
         entity.setMoment(Instant.now());
         entity = bookRestockingRepository.save(entity);
         return new BeerRestockingDTO(entity);
@@ -72,7 +73,7 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     private void copyDtoToEntity(BeerRestockingDTO dto, BeerRestocking entity) {
         entity.setQuantity(dto.getQuantity());
 
-        Beer beer = bookRepository.findById(dto.getId())
+        Beer beer = bookRepository.findById(dto.getBeerId())
                 .orElseThrow(() -> new RuntimeException("Book not found"));
         entity.setBeer(beer);
 

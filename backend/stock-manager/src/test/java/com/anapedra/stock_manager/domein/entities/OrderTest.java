@@ -25,13 +25,13 @@ public class OrderTest {
     void setUp() {
         beer1 = Mockito.mock(Beer.class);
         Mockito.when(beer1.getPrice()).thenReturn(10.00);
-        
+
         beer2 = Mockito.mock(Beer.class);
         Mockito.when(beer2.getPrice()).thenReturn(5.50);
         item1 = new OrderItem(null, beer1, 3, 10.00);
         item2 = new OrderItem(null, beer2, 2, 5.50);
 
-        order = new Order(1L, Instant.now(), new User());
+        order = new Order(Instant.now(), new User(), OrderStatus.WAITING_PAYMENT);
         order.getItems().add(item1);
         order.getItems().add(item2);
     }

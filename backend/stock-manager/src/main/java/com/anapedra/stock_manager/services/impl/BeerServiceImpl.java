@@ -9,6 +9,7 @@ import com.anapedra.stock_manager.domain.entities.Category;
 import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.CategoryRepository;
+import com.anapedra.stock_manager.repositories.StockRepository;
 import com.anapedra.stock_manager.services.BeerService;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
@@ -28,10 +29,15 @@ public class BeerServiceImpl implements BeerService {
 
     private final BeerRepository beerRepository;
     private final CategoryRepository categoryRepository;
-    public BeerServiceImpl(BeerRepository beerRepository, CategoryRepository categoryRepository) {
+
+    public BeerServiceImpl(BeerRepository beerRepository, CategoryRepository categoryRepository, StockRepository stockRepository) {
         this.beerRepository = beerRepository;
         this.categoryRepository = categoryRepository;
+        this.stockRepository = stockRepository;
     }
+
+    private final StockRepository stockRepository;
+
 
 
     @Transactional(readOnly = true)
@@ -72,34 +78,7 @@ public class BeerServiceImpl implements BeerService {
     }
 
 
-    private void copyInsertDtoToEntity(BeerInsertDTO dto, Beer beer) {
-        beer.setName(dto.getName());
-        beer.setUrlImg(dto.getUrlImg());
-        beer.setAlcoholContent(dto.getAlcoholContent());
-        beer.setPrice(dto.getPrice());
-        beer.setManufactureDate(dto.getManufactureDate());
-        beer.setExpirationDate(dto.getExpirationDate());
 
-
-        StockInputDTO stockDTO = dto.getStock();
-        if (stockDTO != null) {
-            if (beer.getStock() == null) {
-                Stock stock = new Stock(stockDTO.getQuantity(), beer);
-                beer.setStock(stock);
-            } else {
-                beer.getStock().setQuantity(stockDTO.getQuantity());
-            }
-        }
-
-        beer.getCategories().clear();
-        if (dto.getCategories() != null && !dto.getCategories().isEmpty()) {
-            Set<Long> categoryIds = dto.getCategories().stream()
-                    .map(CategoryDTO::getId)
-                    .collect(Collectors.toSet());
-            List<Category> categories = categoryRepository.findAllById(categoryIds);
-            beer.getCategories().addAll(categories);
-        }
-    }
 
     @Override
     @Transactional
@@ -134,6 +113,33 @@ public class BeerServiceImpl implements BeerService {
         } catch (DataIntegrityViolationException e) {
             throw new DatabaseException("Falha de integridade referencial");
         }
+    }
+
+
+    private void copyInsertDtoToEntity(BeerInsertDTO dto, Beer beer) {
+        beer.setName(dto.getName());
+        beer.setUrlImg(dto.getUrlImg());
+        beer.setAlcoholContent(dto.getAlcoholContent());
+        beer.setPrice(dto.getPrice());
+        beer.setManufactureDate(dto.getManufactureDate());
+        beer.setExpirationDate(dto.getExpirationDate());
+
+
+                StockInputDTO stockDTO = dto.getStock();
+                Stock stock = new Stock(stockDTO.getQuantity(), beer);
+                beer.setStock(stock);
+                stockRepository.save(stock);
+
+
+
+        beer.getCategories().clear();
+        dto.getCategories().forEach(catDto -> {
+            Category category = categoryRepository.findById(catDto.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+            beer.getCategories().add(category);
+        });
+
+
     }
 
 }

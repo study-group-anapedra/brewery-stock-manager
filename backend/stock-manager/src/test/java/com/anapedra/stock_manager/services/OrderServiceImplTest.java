@@ -8,6 +8,7 @@ import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.domain.entities.User;
 import com.anapedra.stock_manager.domain.enums.OrderStatus;
 import com.anapedra.stock_manager.repositories.BeerRepository;
+import com.anapedra.stock_manager.repositories.OrderItemRepository;
 import com.anapedra.stock_manager.repositories.OrderRepository;
 import com.anapedra.stock_manager.repositories.UserRepository;
 import com.anapedra.stock_manager.services.exceptions.ForbiddenException;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -32,6 +34,7 @@ class OrderServiceImplTest {
     private OrderRepository orderRepository;
     private BeerRepository beerRepository;
     private UserRepository userRepository;
+    private OrderItemRepository orderItemRepository;
 
     private OrderServiceImpl service;
 
@@ -47,10 +50,13 @@ class OrderServiceImplTest {
         orderRepository = mock(OrderRepository.class);
         beerRepository = mock(BeerRepository.class);
         userRepository = mock(UserRepository.class);
+        orderItemRepository = mock(OrderItemRepository.class);
+
+
 
         service = new OrderServiceImpl(
                 authService, userService, orderRepository,
-                beerRepository, userRepository
+                beerRepository, userRepository,orderItemRepository
         );
 
         user = new User();
@@ -89,9 +95,7 @@ class OrderServiceImplTest {
         assertThrows(ResourceNotFoundException.class, () -> service.update(1L, new OrderDTO()));
     }
 
-    // =============================================================
-    // DELETE
-    // =============================================================
+
 
     @Test
     void delete_ShouldRemoveOrder_WhenUserAuthorized() {
@@ -113,15 +117,13 @@ class OrderServiceImplTest {
         assertThrows(ResourceNotFoundException.class, () -> service.delete(1L));
     }
 
-    // =============================================================
-    // FIND (ADMIN)
-    // =============================================================
 
-//    @Test
-//    void find_ShouldThrowForbidden_WhenNotAdmin() {
-//        doThrow(new ForbiddenException("")).when(authService).validateAdmin();
-//
-//        assertThrows(ForbiddenException.class,
-//                () -> service.find(1L, "Ana", "111", Pageable.unpaged()));
-//    }
+
+    @Test
+    void find_ShouldThrowForbidden_WhenNotAdmin() {
+        doThrow(new ForbiddenException("")).when(authService).validateAdmin();
+
+        assertThrows(ForbiddenException.class,
+                () -> service.find(1L, "Ana", "01589924578","","",Pageable.unpaged()));
+    }
 }

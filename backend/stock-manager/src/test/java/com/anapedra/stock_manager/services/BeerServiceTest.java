@@ -9,6 +9,7 @@ import com.anapedra.stock_manager.domain.entities.Category;
 import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.CategoryRepository;
+import com.anapedra.stock_manager.repositories.StockRepository;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import com.anapedra.stock_manager.services.impl.BeerServiceImpl;
@@ -41,6 +42,9 @@ public class BeerServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+    
+    @Mock
+    private StockRepository stockRepository;
 
     private Long existingId;
     private Long nonExistingId;
@@ -48,6 +52,8 @@ public class BeerServiceTest {
     private Beer beer;
     private BeerInsertDTO beerInsertDTO;
     private PageImpl<Beer> page;
+    private Stock stock;
+    private Category category; // Declarar Category para uso no mock
 
     @BeforeEach
     void setUp() throws Exception {
@@ -56,13 +62,12 @@ public class BeerServiceTest {
         dependentId = 2L;
 
         // Criando entidades mock
-        Category category = new Category(5L, "IPA",null);
-        Stock stock = new Stock(50, null);
+        category = new Category(5L, "IPA",null);
+        stock = new Stock(50, null);
         
-        // CORREÇÃO AQUI: Removendo 'stock' do construtor da Beer.
         beer = new Beer(existingId, "IPA Teste", "url/img", 5.5, 12.0, LocalDate.now(), LocalDate.now().plusYears(1));
         
-        beer.setStock(stock); // Associa o estoque
+        beer.setStock(stock);
         beer.getCategories().add(category);
         stock.setBeer(beer);
 
@@ -70,7 +75,7 @@ public class BeerServiceTest {
         StockInputDTO stockDTO = new StockInputDTO(50);
         CategoryDTO categoryDTO = new CategoryDTO(5L, "IPA",null);
         beerInsertDTO = new BeerInsertDTO(beer);
-        beerInsertDTO.setStock(stockDTO); // Garante que o DTO tem o Stock
+        beerInsertDTO.setStock(stockDTO);
         beerInsertDTO.getCategories().clear();
         beerInsertDTO.getCategories().add(categoryDTO);
 
@@ -83,14 +88,19 @@ public class BeerServiceTest {
         when(beerRepository.findById(nonExistingId)).thenReturn(Optional.empty());
 
         when(beerRepository.save(any(Beer.class))).thenReturn(beer);
+        when(stockRepository.save(any(Stock.class))).thenReturn(stock);
+
 
         when(beerRepository.existsById(existingId)).thenReturn(true);
         when(beerRepository.existsById(nonExistingId)).thenReturn(false);
-        when(beerRepository.existsById(dependentId)).thenReturn(true); // Para teste de integridade
+        when(beerRepository.existsById(dependentId)).thenReturn(true); 
 
         doNothing().when(beerRepository).deleteById(existingId);
         doThrow(DataIntegrityViolationException.class).when(beerRepository).deleteById(dependentId);
 
+        // CORREÇÃO ESSENCIAL: Mock para o findById de Categoria
+        when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
+        
         // Mocks para Category/Stock
         when(categoryRepository.findAllById(anySet())).thenReturn(List.of(category));
 
@@ -107,7 +117,6 @@ public class BeerServiceTest {
         Page<BeerFilterDTO> result = beerService.findAllBeer(null, null, null, null, null, PageRequest.of(0, 10));
         assertNotNull(result);
         assertFalse(result.isEmpty());
-        // Ajustei a verificação do número de argumentos, pois o BeerService tem 6 argumentos de filtro + 1 Pageable
         verify(beerRepository, times(1)).findAllBeer(any(), any(), any(), any(), any(), any(Pageable.class)); 
     }
 
@@ -140,6 +149,9 @@ public class BeerServiceTest {
         assertNotNull(result);
         assertEquals(existingId, result.getId());
         verify(beerRepository, times(1)).save(any(Beer.class));
+        verify(stockRepository, times(1)).save(any(Stock.class));
+        // Verifica se o findById foi chamado para cada categoria no DTO
+        verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong()); 
     }
 
     // --- Testes UPDATE ---
@@ -151,6 +163,9 @@ public class BeerServiceTest {
         assertNotNull(result);
         assertEquals(existingId, result.getId());
         verify(beerRepository, times(1)).save(any(Beer.class));
+        verify(stockRepository, times(1)).save(any(Stock.class));
+        // Verifica se o findById foi chamado para cada categoria no DTO
+        verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong());
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.anapedra.stock_manager.domain.entities.Category;
 import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.CategoryRepository;
+import com.anapedra.stock_manager.repositories.StockRepository;
 import com.anapedra.stock_manager.services.BeerService;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
@@ -28,10 +29,15 @@ public class BeerServiceImpl implements BeerService {
 
     private final BeerRepository beerRepository;
     private final CategoryRepository categoryRepository;
-    public BeerServiceImpl(BeerRepository beerRepository, CategoryRepository categoryRepository) {
+
+    public BeerServiceImpl(BeerRepository beerRepository, CategoryRepository categoryRepository, StockRepository stockRepository) {
         this.beerRepository = beerRepository;
         this.categoryRepository = categoryRepository;
+        this.stockRepository = stockRepository;
     }
+
+    private final StockRepository stockRepository;
+
 
 
     @Transactional(readOnly = true)
@@ -110,17 +116,6 @@ public class BeerServiceImpl implements BeerService {
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
     private void copyInsertDtoToEntity(BeerInsertDTO dto, Beer beer) {
         beer.setName(dto.getName());
         beer.setUrlImg(dto.getUrlImg());
@@ -133,16 +128,18 @@ public class BeerServiceImpl implements BeerService {
                 StockInputDTO stockDTO = dto.getStock();
                 Stock stock = new Stock(stockDTO.getQuantity(), beer);
                 beer.setStock(stock);
+                stockRepository.save(stock);
+
 
 
         beer.getCategories().clear();
-        if (dto.getCategories() != null && !dto.getCategories().isEmpty()) {
-            Set<Long> categoryIds = dto.getCategories().stream()
-                    .map(CategoryDTO::getId)
-                    .collect(Collectors.toSet());
-            List<Category> categories = categoryRepository.findAllById(categoryIds);
-            beer.getCategories().addAll(categories);
-        }
+        dto.getCategories().forEach(catDto -> {
+            Category category = categoryRepository.findById(catDto.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+            beer.getCategories().add(category);
+        });
+
+
     }
 
 }

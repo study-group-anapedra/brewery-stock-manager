@@ -1,28 +1,26 @@
 package com.anapedra.stock_manager.services;
 
 import com.anapedra.stock_manager.domain.dtos.OrderDTO;
-import com.anapedra.stock_manager.domain.dtos.OrderItemDTO;
 import com.anapedra.stock_manager.domain.entities.Beer;
 import com.anapedra.stock_manager.domain.entities.Order;
 import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.domain.entities.User;
-import com.anapedra.stock_manager.domain.enums.OrderStatus;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.OrderItemRepository;
 import com.anapedra.stock_manager.repositories.OrderRepository;
 import com.anapedra.stock_manager.repositories.UserRepository;
+import com.anapedra.stock_manager.services.AuthService;
+import com.anapedra.stock_manager.services.UserService;
 import com.anapedra.stock_manager.services.exceptions.ForbiddenException;
-import com.anapedra.stock_manager.services.exceptions.InsufficientStockException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import com.anapedra.stock_manager.services.impl.OrderServiceImpl;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry; // Importação CRÍTICA
+import io.micrometer.core.instrument.MeterRegistry; // Importação da interface
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -35,6 +33,7 @@ class OrderServiceImplTest {
     private BeerRepository beerRepository;
     private UserRepository userRepository;
     private OrderItemRepository orderItemRepository;
+    private SimpleMeterRegistry meterRegistry; // **CORREÇÃO**: Usando implementação real para teste
 
     private OrderServiceImpl service;
 
@@ -44,19 +43,24 @@ class OrderServiceImplTest {
 
     @BeforeEach
     void setup() {
-
+        // Inicializa os Mocks das dependências
         authService = mock(AuthService.class);
         userService = mock(UserService.class);
         orderRepository = mock(OrderRepository.class);
         beerRepository = mock(BeerRepository.class);
         userRepository = mock(UserRepository.class);
         orderItemRepository = mock(OrderItemRepository.class);
+        
+        // **CORREÇÃO CRÍTICA**: Inicializa o MeterRegistry com uma implementação real e simples.
+        // Isso resolve a NullPointerException no construtor.
+        meterRegistry = new SimpleMeterRegistry(); 
 
 
-
+        // **CORREÇÃO**: O construtor do serviço agora recebe o MeterRegistry no final
         service = new OrderServiceImpl(
                 authService, userService, orderRepository,
-                beerRepository, userRepository,orderItemRepository
+                beerRepository, userRepository, orderItemRepository,
+                meterRegistry
         );
 
         user = new User();
@@ -76,10 +80,30 @@ class OrderServiceImplTest {
 
     @Test
     void save_ShouldThrowForbidden_WhenUserNotAuthenticated() {
-        when(userService.authenticated()).thenReturn(null);
+        // CORREÇÃO: O serviço agora usa authService.authenticatedUser() para checar permissão/autenticação
+        when(authService.authenticatedUser()).thenReturn(null);
         assertThrows(ForbiddenException.class, () -> service.save(new OrderDTO()));
     }
 
+    // Teste findById com sucesso
+    @Test
+    void findById_ShouldReturnOrder_WhenOrderExistsAndUserAuthorized() {
+        Order order = new Order();
+        order.setId(1L);
+        order.setClient(user);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        
+        // Simula autorização
+        doNothing().when(authService).validateSelfOrAdmin(1L);
+
+        // Execução
+        OrderDTO result = service.findById(1L);
+
+        // Verificação
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        verify(authService).validateSelfOrAdmin(1L);
+    }
 
 
     @Test
@@ -94,7 +118,21 @@ class OrderServiceImplTest {
         when(orderRepository.findById(1L)).thenReturn(Optional.empty());
         assertThrows(ResourceNotFoundException.class, () -> service.update(1L, new OrderDTO()));
     }
+    
+    // Adicionado teste para update_ShouldThrowForbidden
+    @Test
+    void update_ShouldThrowForbidden_WhenUserNotAuthorized() {
+        Order existingOrder = new Order();
+        existingOrder.setId(1L);
+        existingOrder.setClient(user);
 
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(existingOrder));
+        // Força a exceção de permissão
+        doThrow(new ForbiddenException("")).when(authService).validateSelfOrAdmin(anyLong()); 
+
+        assertThrows(ForbiddenException.class, () -> service.update(1L, new OrderDTO()));
+        verify(authService).validateSelfOrAdmin(user.getId());
+    }
 
 
     @Test
@@ -104,10 +142,12 @@ class OrderServiceImplTest {
         order.setClient(user);
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        // Simula autorização
+        doNothing().when(authService).validateSelfOrAdmin(anyLong());
 
         service.delete(1L);
 
-        verify(authService).validateSelfOrAdmin(1L);
+        verify(authService).validateSelfOrAdmin(user.getId());
         verify(orderRepository).delete(order);
     }
 
@@ -118,12 +158,13 @@ class OrderServiceImplTest {
     }
 
 
-
     @Test
     void find_ShouldThrowForbidden_WhenNotAdmin() {
         doThrow(new ForbiddenException("")).when(authService).validateAdmin();
 
         assertThrows(ForbiddenException.class,
                 () -> service.find(1L, "Ana", "01589924578","","",Pageable.unpaged()));
+        
+        verify(authService).validateAdmin();
     }
 }

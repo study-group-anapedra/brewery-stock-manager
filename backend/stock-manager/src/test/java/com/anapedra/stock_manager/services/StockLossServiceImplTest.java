@@ -9,20 +9,27 @@ import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.StockLossRepository;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import com.anapedra.stock_manager.services.impl.StockLossServiceImpl;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry; // Usar SimpleMeterRegistry
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.data.domain.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class StockLossServiceImplTest {
 
     @Mock
@@ -31,23 +38,34 @@ class StockLossServiceImplTest {
     @Mock
     private StockLossRepository stockLossRepository;
 
-    @InjectMocks
-    private StockLossServiceImpl service;
+    // REMOVER @InjectMocks, pois a injeção falha no construtor
+    private StockLossServiceImpl service; 
+
+    // Adicionar um campo para o MeterRegistry
+    private MeterRegistry meterRegistry; 
 
     private Beer beer;
     private StockLossDTO dto;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
 
+
+        // 1. Inicializar o SimpleMeterRegistry (não null)
+        meterRegistry = new SimpleMeterRegistry(); 
+
+        // 2. Instanciar manualmente o Service
+        service = new StockLossServiceImpl(beerRepository, stockLossRepository, meterRegistry);
+
+        // Configuração de dados de teste
         Stock stock = new Stock();
         stock.setQuantity(50);
 
         beer = new Beer();
         beer.setId(1L);
         beer.setName("IPA Test");
-        beer.setStock(stock);
+        // Garantir que a entidade Beer tenha o relacionamento Stock inicializado
+        beer.setStock(stock); 
 
         dto = new StockLossDTO();
         dto.setBeerId(1L);
@@ -72,10 +90,8 @@ class StockLossServiceImplTest {
 
         assertThrows(IllegalArgumentException.class, () -> service.registerLoss(dto));
     }
+    
 
-    // ----------------------------------------------------------
-    // FIND LOSSES BY FILTERS
-    // ----------------------------------------------------------
 
     @Test
     void findLossesByFilters_ShouldReturnPage_WhenItemsExist() {

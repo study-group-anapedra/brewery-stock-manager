@@ -6,6 +6,8 @@ import com.anapedra.stock_manager.repositories.CategoryRepository;
 import com.anapedra.stock_manager.services.CategoryService;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,12 +20,17 @@ import java.util.stream.Collectors;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final Timer categoryCreationUpdateTimer;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository, MeterRegistry registry) {
         this.categoryRepository = categoryRepository;
+        this.categoryCreationUpdateTimer = Timer.builder("stock_manager.category.creation_update_time")
+                .description("Tempo de execução da criação ou atualização de categorias")
+                .register(registry);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CategoryDTO> findAll() {
         List<Category> categories = categoryRepository.findAll();
         return categories.stream()
@@ -32,6 +39,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CategoryDTO findById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
@@ -39,20 +47,26 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Transactional
     public CategoryDTO insert(CategoryDTO dto) {
-        Category category = new Category();
-        category.setDescription(dto.getDescription());
-        Category savedCategory = categoryRepository.save(category);
-        return new CategoryDTO(savedCategory);
+        return categoryCreationUpdateTimer.record(() -> {
+            Category category = new Category();
+            category.setDescription(dto.getDescription());
+            Category savedCategory = categoryRepository.save(category);
+            return new CategoryDTO(savedCategory);
+        });
     }
 
     @Override
+    @Transactional
     public CategoryDTO update(Long id, CategoryDTO dto) {
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
-        category.setDescription(dto.getDescription());
-        Category updatedCategory = categoryRepository.save(category);
-        return new CategoryDTO(updatedCategory);
+        return categoryCreationUpdateTimer.record(() -> {
+            Category category = categoryRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+            category.setDescription(dto.getDescription());
+            Category updatedCategory = categoryRepository.save(category);
+            return new CategoryDTO(updatedCategory);
+        });
     }
 
     @Override
@@ -68,4 +82,3 @@ public class CategoryServiceImpl implements CategoryService {
         }
     }
 }
-

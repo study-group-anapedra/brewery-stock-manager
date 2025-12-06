@@ -10,23 +10,22 @@ import com.anapedra.stock_manager.domain.entities.Stock;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.CategoryRepository;
 import com.anapedra.stock_manager.repositories.StockRepository;
+import com.anapedra.stock_manager.services.impl.BeerServiceImpl;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
-import com.anapedra.stock_manager.services.impl.BeerServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.*;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -34,16 +33,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(SpringExtension.class)
 public class BeerServiceTest {
 
-    @InjectMocks
     private BeerServiceImpl beerService;
 
-    @Mock
     private BeerRepository beerRepository;
-
-    @Mock
     private CategoryRepository categoryRepository;
-    
-    @Mock
     private StockRepository stockRepository;
 
     private Long existingId;
@@ -53,75 +46,73 @@ public class BeerServiceTest {
     private BeerInsertDTO beerInsertDTO;
     private PageImpl<Beer> page;
     private Stock stock;
-    private Category category; // Declarar Category para uso no mock
+    private Category category;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
+        // Inicializando mocks manualmente
+        beerRepository = mock(BeerRepository.class);
+        categoryRepository = mock(CategoryRepository.class);
+        stockRepository = mock(StockRepository.class);
+
+        // Inicializando service com SimpleMeterRegistry
+        beerService = new BeerServiceImpl(beerRepository, categoryRepository, stockRepository, new SimpleMeterRegistry());
+
         existingId = 1L;
         nonExistingId = 1000L;
         dependentId = 2L;
 
         // Criando entidades mock
-        category = new Category(5L, "IPA",null);
+        category = new Category(5L, "IPA", null);
         stock = new Stock(50, null);
-        
+
         beer = new Beer(existingId, "IPA Teste", "url/img", 5.5, 12.0, LocalDate.now(), LocalDate.now().plusYears(1));
-        
         beer.setStock(stock);
         beer.getCategories().add(category);
         stock.setBeer(beer);
 
         // Criando DTOs mock
         StockInputDTO stockDTO = new StockInputDTO(50);
-        CategoryDTO categoryDTO = new CategoryDTO(5L, "IPA",null);
+        CategoryDTO categoryDTO = new CategoryDTO(5L, "IPA", null);
         beerInsertDTO = new BeerInsertDTO(beer);
         beerInsertDTO.setStock(stockDTO);
         beerInsertDTO.getCategories().clear();
         beerInsertDTO.getCategories().add(categoryDTO);
 
-        // Configuração de Mocks para Paging
+        // Configuração de Page
         page = new PageImpl<>(List.of(beer));
-        Pageable pageable = PageRequest.of(0, 10);
 
-        // Comportamentos padrão dos Mocks
+        // Configuração de Mocks
         when(beerRepository.findById(existingId)).thenReturn(Optional.of(beer));
         when(beerRepository.findById(nonExistingId)).thenReturn(Optional.empty());
-
         when(beerRepository.save(any(Beer.class))).thenReturn(beer);
         when(stockRepository.save(any(Stock.class))).thenReturn(stock);
 
-
         when(beerRepository.existsById(existingId)).thenReturn(true);
         when(beerRepository.existsById(nonExistingId)).thenReturn(false);
-        when(beerRepository.existsById(dependentId)).thenReturn(true); 
+        when(beerRepository.existsById(dependentId)).thenReturn(true);
 
         doNothing().when(beerRepository).deleteById(existingId);
         doThrow(DataIntegrityViolationException.class).when(beerRepository).deleteById(dependentId);
 
-        // CORREÇÃO ESSENCIAL: Mock para o findById de Categoria
         when(categoryRepository.findById(category.getId())).thenReturn(Optional.of(category));
-        
-        // Mocks para Category/Stock
         when(categoryRepository.findAllById(anySet())).thenReturn(List.of(category));
 
-        // Mocks para findAllBeer (comportamento de filtro)
-        when(beerRepository.findAllBeer(any(), any(), any(), any(), any(), any())).thenReturn(page);
+        when(beerRepository.findAllBeer(any(), any(), any(), any(), any(), any(Pageable.class))).thenReturn(page);
         when(beerRepository.findAll(any(Pageable.class))).thenReturn(page);
     }
 
     // --- Testes FIND ALL (Filtragem) ---
-
     @Test
     @DisplayName("findAllBeer deve retornar Page de BeerFilterDTO com sucesso")
     void findAllBeer_shouldReturnPageBeerFilterDTO_successfully() {
         Page<BeerFilterDTO> result = beerService.findAllBeer(null, null, null, null, null, PageRequest.of(0, 10));
         assertNotNull(result);
         assertFalse(result.isEmpty());
-        verify(beerRepository, times(1)).findAllBeer(any(), any(), any(), any(), any(), any(Pageable.class)); 
+        verify(beerRepository, times(1)).findAllBeer(any(), any(), any(), any(), any(), any(Pageable.class));
     }
 
     // --- Testes FIND BY ID ---
-
     @Test
     @DisplayName("findById deve retornar BeerFilterDTO quando ID existir")
     void findById_shouldReturnBeerFilterDTO_whenIdExists() {
@@ -134,14 +125,11 @@ public class BeerServiceTest {
     @Test
     @DisplayName("findById deve lançar ResourceNotFoundException quando ID não existir")
     void findById_shouldThrowResourceNotFoundException_whenIdDoesNotExist() {
-        assertThrows(ResourceNotFoundException.class, () -> {
-            beerService.findById(nonExistingId);
-        });
+        assertThrows(ResourceNotFoundException.class, () -> beerService.findById(nonExistingId));
         verify(beerRepository, times(1)).findById(nonExistingId);
     }
 
     // --- Testes INSERT ---
-
     @Test
     @DisplayName("insert deve retornar BeerInsertDTO com ID quando inserir com sucesso")
     void insert_shouldReturnBeerInsertDTO_withSuccess() {
@@ -150,12 +138,10 @@ public class BeerServiceTest {
         assertEquals(existingId, result.getId());
         verify(beerRepository, times(1)).save(any(Beer.class));
         verify(stockRepository, times(1)).save(any(Stock.class));
-        // Verifica se o findById foi chamado para cada categoria no DTO
-        verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong()); 
+        verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong());
     }
 
     // --- Testes UPDATE ---
-
     @Test
     @DisplayName("update deve retornar BeerInsertDTO quando ID existir")
     void update_shouldReturnBeerInsertDTO_whenIdExists() {
@@ -164,28 +150,22 @@ public class BeerServiceTest {
         assertEquals(existingId, result.getId());
         verify(beerRepository, times(1)).save(any(Beer.class));
         verify(stockRepository, times(1)).save(any(Stock.class));
-        // Verifica se o findById foi chamado para cada categoria no DTO
         verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong());
     }
 
     @Test
     @DisplayName("update deve lançar ResourceNotFoundException quando ID não existir")
     void update_shouldThrowResourceNotFoundException_whenIdDoesNotExist() {
-        assertThrows(ResourceNotFoundException.class, () -> {
-            beerService.update(nonExistingId, beerInsertDTO);
-        });
+        assertThrows(ResourceNotFoundException.class, () -> beerService.update(nonExistingId, beerInsertDTO));
         verify(beerRepository, times(1)).findById(nonExistingId);
         verify(beerRepository, never()).save(any(Beer.class));
     }
 
     // --- Testes DELETE ---
-
     @Test
     @DisplayName("delete não deve retornar nada quando ID existir (sucesso)")
     void delete_shouldDoNothing_whenIdExists() {
-        assertDoesNotThrow(() -> {
-            beerService.delete(existingId);
-        });
+        assertDoesNotThrow(() -> beerService.delete(existingId));
         verify(beerRepository, times(1)).existsById(existingId);
         verify(beerRepository, times(1)).deleteById(existingId);
     }
@@ -193,9 +173,7 @@ public class BeerServiceTest {
     @Test
     @DisplayName("delete deve lançar ResourceNotFoundException quando ID não existir")
     void delete_shouldThrowResourceNotFoundException_whenIdDoesNotExist() {
-        assertThrows(ResourceNotFoundException.class, () -> {
-            beerService.delete(nonExistingId);
-        });
+        assertThrows(ResourceNotFoundException.class, () -> beerService.delete(nonExistingId));
         verify(beerRepository, times(1)).existsById(nonExistingId);
         verify(beerRepository, never()).deleteById(nonExistingId);
     }
@@ -203,9 +181,7 @@ public class BeerServiceTest {
     @Test
     @DisplayName("delete deve lançar DatabaseException quando houver violação de integridade")
     void delete_shouldThrowDatabaseException_whenIntegrityViolation() {
-        assertThrows(DatabaseException.class, () -> {
-            beerService.delete(dependentId);
-        });
+        assertThrows(DatabaseException.class, () -> beerService.delete(dependentId));
         verify(beerRepository, times(1)).existsById(dependentId);
         verify(beerRepository, times(1)).deleteById(dependentId);
     }

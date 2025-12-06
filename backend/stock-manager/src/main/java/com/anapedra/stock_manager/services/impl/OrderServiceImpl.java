@@ -19,6 +19,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Counter;
+
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,13 +39,17 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
 
+    private final Timer orderCreationTimer; // Timer para a criação de pedidos
+    private final Counter insufficientStockCounter; // Contador para erros de estoque
+
     public OrderServiceImpl(
             AuthService authService,
             UserService userService,
             OrderRepository orderRepository,
             BeerRepository beerRepository,
             UserRepository userRepository,
-            OrderItemRepository orderItemRepository
+            OrderItemRepository orderItemRepository,
+            MeterRegistry registry // Injeção do MeterRegistry
     ) {
         this.authService = authService;
         this.userService = userService;
@@ -49,8 +57,17 @@ public class OrderServiceImpl implements OrderService {
         this.beerRepository = beerRepository;
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
-    }
 
+        // Inicializa o Timer
+        this.orderCreationTimer = Timer.builder("stock_manager.order.creation_time")
+                .description("Tempo de execução da criação/atualização de pedidos")
+                .register(registry);
+
+        // Inicializa o Counter
+        this.insufficientStockCounter = Counter.builder("stock_manager.order.insufficient_stock_errors")
+                .description("Contagem de pedidos que falharam por falta de estoque")
+                .register(registry);
+    }
     @Transactional(readOnly = true)
     @Override
     public OrderDTO findById(Long id) {
@@ -114,26 +131,26 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderDTO save(OrderDTO dto) {
-        Order order = new Order();
-        copyDtoToEntity(dto, order);
-        order = orderRepository.save(order);
-        return new OrderDTO(order, order.getItems());
+        return orderCreationTimer.record(() -> {
+            Order order = new Order();
+            copyDtoToEntity(dto, order);
+            Order savedOrder = orderRepository.save(order);
+            return new OrderDTO(savedOrder, savedOrder.getItems());
+        });
     }
 
     @Transactional
     @Override
     public OrderDTO update(Long id, OrderDTO dto) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
-        authService.validateSelfOrAdmin(order.getClient().getId());
-        copyDtoToEntity(dto, order);
-        orderRepository.save(order);
-        return new OrderDTO(order, order.getItems());
+        return orderCreationTimer.record(() -> {
+            Order order = orderRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
+            authService.validateSelfOrAdmin(order.getClient().getId());
+            copyDtoToEntity(dto, order);
+            Order savedOrder = orderRepository.save(order);
+            return new OrderDTO(savedOrder, savedOrder.getItems());
+        });
     }
-
-
-
-
 
 
     private void copyDtoToEntity(OrderDTO dto, Order entity) {
@@ -147,7 +164,6 @@ public class OrderServiceImpl implements OrderService {
         }
         entity.setClient(authenticatedUser);
 
-        // Se for update, limpar itens antigos
         if (entity.getId() != null) {
             orderItemRepository.deleteAll(entity.getItems());
             entity.getItems().clear();
@@ -173,6 +189,7 @@ public class OrderServiceImpl implements OrderService {
             Beer beer = orderItem.getBeer();
 
             if (orderItem.getQuantity() > beer.getStock().getQuantity()) {
+                insufficientStockCounter.increment();
                 throw new InsufficientStockException(
                         "Insufficient stock for beer ID: "
                                 + beer.getId()

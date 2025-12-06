@@ -2,7 +2,6 @@ package com.anapedra.stock_manager.services.impl;
 
 import com.anapedra.stock_manager.domain.dtos.BeerFilterDTO;
 import com.anapedra.stock_manager.domain.dtos.BeerInsertDTO;
-import com.anapedra.stock_manager.domain.dtos.CategoryDTO;
 import com.anapedra.stock_manager.domain.dtos.StockInputDTO;
 import com.anapedra.stock_manager.domain.entities.Beer;
 import com.anapedra.stock_manager.domain.entities.Category;
@@ -13,31 +12,39 @@ import com.anapedra.stock_manager.repositories.StockRepository;
 import com.anapedra.stock_manager.services.BeerService;
 import com.anapedra.stock_manager.services.exceptions.DatabaseException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 @Service
 public class BeerServiceImpl implements BeerService {
 
     private final BeerRepository beerRepository;
     private final CategoryRepository categoryRepository;
+    private final StockRepository stockRepository;
+    private final Timer beerCreationUpdateTimer; // Timer para criação e atualização
 
-    public BeerServiceImpl(BeerRepository beerRepository, CategoryRepository categoryRepository, StockRepository stockRepository) {
+    public BeerServiceImpl(
+            BeerRepository beerRepository,
+            CategoryRepository categoryRepository,
+            StockRepository stockRepository,
+            MeterRegistry registry
+    ) {
         this.beerRepository = beerRepository;
         this.categoryRepository = categoryRepository;
         this.stockRepository = stockRepository;
+        this.beerCreationUpdateTimer = Timer.builder("stock_manager.beer.creation_update_time")
+                .description("Tempo de execução da criação ou atualização de cervejas")
+                .register(registry);
     }
-
-    private final StockRepository stockRepository;
-
 
 
     @Transactional(readOnly = true)
@@ -78,27 +85,28 @@ public class BeerServiceImpl implements BeerService {
     }
 
 
-
-
     @Override
     @Transactional
     public BeerInsertDTO insert(BeerInsertDTO dto) {
-        Beer beer = new Beer();
-        copyInsertDtoToEntity(dto, beer);
-        beer = beerRepository.save(beer);
-        return new BeerInsertDTO(beer);
+        return beerCreationUpdateTimer.record(() -> {
+            Beer beer = new Beer();
+            copyInsertDtoToEntity(dto, beer);
+            Beer savedBeer = beerRepository.save(beer);
+            return new BeerInsertDTO(savedBeer);
+        });
     }
-
 
 
     @Override
     @Transactional
     public BeerInsertDTO update(Long id, BeerInsertDTO dto) {
-        Beer beer = beerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Cerveja não encontrada"));
-        copyInsertDtoToEntity(dto, beer);
-        beer = beerRepository.save(beer);
-        return new BeerInsertDTO(beer);
+        return beerCreationUpdateTimer.record(() -> {
+            Beer beer = beerRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException("Cerveja não encontrada"));
+            copyInsertDtoToEntity(dto, beer);
+            Beer savedBeer = beerRepository.save(beer);
+            return new BeerInsertDTO(savedBeer);
+        });
     }
 
 
@@ -125,11 +133,13 @@ public class BeerServiceImpl implements BeerService {
         beer.setExpirationDate(dto.getExpirationDate());
 
 
-                StockInputDTO stockDTO = dto.getStock();
-                Stock stock = new Stock(stockDTO.getQuantity(), beer);
-                beer.setStock(stock);
-                stockRepository.save(stock);
-
+        StockInputDTO stockDTO = dto.getStock();
+        Stock stock = (beer.getStock() != null) ? beer.getStock() : new Stock();
+        stock.setQuantity(stockDTO.getQuantity());
+        stock.setBeer(beer);
+        
+        beer.setStock(stock);
+        stockRepository.save(stock);
 
 
         beer.getCategories().clear();

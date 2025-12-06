@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s  # intervalo de coleta de métricas
+
+scrape_configs:
+  # Métricas do Spring Boot
+  - job_name: 'spring-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['172.17.0.1:8080']
+
+  # Métricas do Node Exporter (Linux Host)
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['172.17.0.1:9100']
+
+  # Métricas do cAdvisor (Docker Containers)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['172.17.0.1:8081']

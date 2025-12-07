@@ -1,3 +1,6 @@
+server:
+  port: 8080  # Porta interna da aplicação Spring Boot
+
 management:
   endpoints:
     web:
@@ -6,4 +9,3 @@ management:
   endpoint:
     health:
       show-details: always
-

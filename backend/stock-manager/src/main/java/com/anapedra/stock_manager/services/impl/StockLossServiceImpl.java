@@ -15,11 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.Counter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 
 @Service
 public class StockLossServiceImpl implements StockLossService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StockLossServiceImpl.class);
 
     private final BeerRepository beerRepository;
     private final StockLossRepository stockLossRepository;
@@ -49,10 +53,11 @@ public class StockLossServiceImpl implements StockLossService {
             LocalDate endDate,
             Pageable pageable) {
 
+        logger.info("SERVICE: Buscando perdas de estoque com filtros. Cerveja ID: {}, Razão: {}", beerId, reasonCode);
+
         String beerSearch = (beerName != null && !beerName.trim().isEmpty())
                 ? beerName.trim()
                 : null;
-
 
         Page<StockLoss> entityPage = stockLossRepository.findLossesByFilters(
                 reasonCode,
@@ -63,31 +68,38 @@ public class StockLossServiceImpl implements StockLossService {
                 endDate,
                 pageable
         );
+        
+        logger.info("SERVICE: Consulta de perdas retornou {} elementos na página {}.", 
+                    entityPage.getNumberOfElements(), pageable.getPageNumber());
 
-        // Mapeia a página de Entidades para uma página de DTOs de Saída
         return entityPage.map(StockLossDTO::new);
     }
 
 
-
-    //*************
-
     @Transactional
     @Override
     public StockLossDTO registerLoss(StockLossDTO dto) {
-        // USO DO TIMER: Mede o tempo total para registrar a perda e atualizar o estoque
+        logger.info("SERVICE: Iniciando registro de perda de estoque. Cerveja ID: {}, Quantidade: {}", 
+                    dto.getBeerId(), dto.getQuantityLost());
+                    
         return lossRegistrationTimer.record(() -> {
             Beer beer = beerRepository.findById(dto.getBeerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Cerveja não encontrada. ID: " + dto.getBeerId()));
+                    .orElseThrow(() -> {
+                        logger.warn("SERVICE WARN: Cerveja não encontrada ID: {} para registro de perda.", dto.getBeerId());
+                        return new ResourceNotFoundException("Cerveja não encontrada. ID: " + dto.getBeerId());
+                    });
 
 
             Integer currentStock = beer.getStock().getQuantity();
             if (dto.getQuantityLost() > currentStock) {
+                logger.error("SERVICE ERROR: Estoque insuficiente. Cerveja ID: {}. Disponível: {}, Solicitado: {}",
+                             beer.getId(), currentStock, dto.getQuantityLost());
                 throw new IllegalArgumentException("Quantidade perdida (" + dto.getQuantityLost() + ") é maior que o estoque atual (" + currentStock + ").");
             }
+            
+            LossReason reason = LossReason.valueOf(dto.hashCode());
+            logger.warn("SERVICE WARN: Usando hashCode() do DTO para LossReason. Verifique a lógica de mapeamento de enum.");
 
-
-            LossReason reason = LossReason.valueOf(dto.hashCode()); // Mantendo a lógica de conversão original (provavelmente incorreta, mas respeitando o código-fonte)
 
             StockLoss entity = new StockLoss(
                     null,
@@ -99,11 +111,13 @@ public class StockLossServiceImpl implements StockLossService {
             );
 
 
-            entity.getUpdateStock(); // Este método deve reduzir o estoque da cerveja
+            entity.getUpdateStock();
             entity = stockLossRepository.save(entity);
 
-            // USO DO COUNTER: Incrementa o contador pelo número exato de unidades perdidas
             totalUnitsLostCounter.increment(dto.getQuantityLost());
+            
+            logger.info("SERVICE: Perda ID {} registrada com sucesso. Estoque de cerveja ID {} reduzido em {} unidades.",
+                        entity.getId(), beer.getId(), entity.getQuantityLost());
 
             return new StockLossDTO(entity);
         });

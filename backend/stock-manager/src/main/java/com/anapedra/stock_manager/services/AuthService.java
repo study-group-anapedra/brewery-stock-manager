@@ -14,7 +14,6 @@ public class AuthService {
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private final UserService userService;
 
-    // Injeção de dependência via construtor (melhor prática)
     public AuthService(UserService userService) {
         this.userService = userService;
     }

@@ -22,15 +22,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class BeerServiceImpl implements BeerService {
 
+    private static final Logger logger = LoggerFactory.getLogger(BeerServiceImpl.class);
+
     private final BeerRepository beerRepository;
     private final CategoryRepository categoryRepository;
     private final StockRepository stockRepository;
-    private final Timer beerCreationUpdateTimer; // Timer para criação e atualização
+    private final Timer beerCreationUpdateTimer;
 
     public BeerServiceImpl(
             BeerRepository beerRepository,
@@ -45,8 +48,6 @@ public class BeerServiceImpl implements BeerService {
                 .description("Tempo de execução da criação ou atualização de cervejas")
                 .register(registry);
     }
-
-
     @Transactional(readOnly = true)
     @Override
     public Page<BeerFilterDTO> findAllBeer(
@@ -56,12 +57,18 @@ public class BeerServiceImpl implements BeerService {
             Integer minQuantity,
             Integer maxQuantity,
             Pageable pageable) {
+
+        logger.info("SERVICE: Buscando cervejas com filtros - CatID: {}, Desc: '{}', MinQ: {}, MaxQ: {}. Página: {}",
+                categoryId, categoryDescription, minQuantity, maxQuantity, pageable.getPageNumber());
+
         String categorySearch = (categoryDescription != null && !categoryDescription.trim().isEmpty())
                 ? categoryDescription.trim()
                 : null;
         String beerSearch = (beerDescription != null && !beerDescription.trim().isEmpty())
                 ? beerDescription.trim()
                 : null;
+
+
         Page<Beer> filteredPage = beerRepository.findAllBeer(
                 categoryId,
                 categorySearch,
@@ -70,31 +77,93 @@ public class BeerServiceImpl implements BeerService {
                 maxQuantity,
                 pageable
         );
-        Page<Beer> finalPage = filteredPage.isEmpty()
-                ? beerRepository.findAll(pageable)
-                : filteredPage;
-        return finalPage.map(BeerFilterDTO::new);
+
+        logger.info("SERVICE: Consulta de cervejas retornou {} elementos na página {}.",
+                filteredPage.getNumberOfElements(), pageable.getPageNumber());
+
+        return filteredPage.map(BeerFilterDTO::new);
     }
+
+//    @Transactional(readOnly = true)
+//    @Override
+//    public Page<BeerFilterDTO> findAllBeer(
+//            Long categoryId,
+//            String categoryDescription,
+//            String beerDescription,
+//            Integer minQuantity,
+//            Integer maxQuantity,
+//            Pageable pageable) {
+//        String categorySearch = (categoryDescription != null && !categoryDescription.trim().isEmpty())
+//                ? categoryDescription.trim()
+//                : null;
+//        String beerSearch = (beerDescription != null && !beerDescription.trim().isEmpty())
+//                ? beerDescription.trim()
+//                : null;
+//        Page<Beer> filteredPage = beerRepository.findAllBeer(
+//                categoryId,
+//                categorySearch,
+//                beerSearch,
+//                minQuantity,
+//                maxQuantity,
+//                pageable
+//        );
+//
+//        Page<Beer> finalPage = filteredPage.isEmpty()
+//                ? beerRepository.findAll(pageable)
+//                : filteredPage;
+//        return finalPage.map(BeerFilterDTO::new);
+//
+//    }
 
     @Transactional(readOnly = true)
     @Override
     public BeerFilterDTO findById(Long id) {
+        logger.info("SERVICE: Buscando cerveja pelo ID: {}", id);
         Beer entity = beerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Cerveja (Entity) não encontrada com ID: " + id));
+                .orElseThrow(() -> {
+                    logger.warn("SERVICE WARN: Cerveja não encontrada com ID: {}", id);
+                    return new ResourceNotFoundException("Cerveja (Entity) não encontrada com ID: " + id);
+                });
+        logger.info("SERVICE: Cerveja ID {} encontrada.", id);
         return new BeerFilterDTO(entity);
     }
 
+//    @Transactional(readOnly = true)
+//    @Override
+//    public BeerFilterDTO findById(Long id) {
+//        Beer entity = beerRepository.findById(id)
+//                .orElseThrow(() -> new ResourceNotFoundException("Cerveja (Entity) não encontrada com ID: " + id));
+//        return new BeerFilterDTO(entity);
+//    }
+
+
+//    @Override
+//    @Transactional
+//    public BeerInsertDTO insert(BeerInsertDTO dto) {
+//        logger.info("SERVICE: Iniciando inserção da nova cerveja: {}", dto.getName());
+//        return beerCreationUpdateTimer.record(() -> {
+//            Beer beer = new Beer();
+//            copyInsertDtoToEntity(dto, beer);
+//            Beer savedBeer = beerRepository.save(beer);
+//            logger.info("SERVICE: Cerveja ID {} salva com sucesso.", savedBeer.getId());
+//            return new BeerInsertDTO(savedBeer);
+//        });
+//    }
 
     @Override
     @Transactional
     public BeerInsertDTO insert(BeerInsertDTO dto) {
-        return beerCreationUpdateTimer.record(() -> {
+            logger.info("SERVICE: Iniciando inserção da nova cerveja: {}", dto.getName());
+
+         return beerCreationUpdateTimer.record(() -> {
             Beer beer = new Beer();
             copyInsertDtoToEntity(dto, beer);
             Beer savedBeer = beerRepository.save(beer);
-            return new BeerInsertDTO(savedBeer);
+                logger.info("SERVICE: Cerveja ID {} salva com sucesso.", savedBeer.getId());
+
+          return new BeerInsertDTO(savedBeer);
         });
-    }
+   }
 
 
     @Override
@@ -114,11 +183,13 @@ public class BeerServiceImpl implements BeerService {
     @Transactional(propagation = Propagation.SUPPORTS)
     public void delete(Long id) {
         if (!beerRepository.existsById(id)) {
+            logger.info("SERVICE: Cerveja ID {} excluída com sucesso.", id);
             throw new ResourceNotFoundException("Recurso não encontrado");
         }
         try {
             beerRepository.deleteById(id);
         } catch (DataIntegrityViolationException e) {
+            logger.error("SERVICE ERROR: Falha de integridade ao excluir cerveja ID {}.", id, e);
             throw new DatabaseException("Falha de integridade referencial");
         }
     }
@@ -137,19 +208,22 @@ public class BeerServiceImpl implements BeerService {
         Stock stock = (beer.getStock() != null) ? beer.getStock() : new Stock();
         stock.setQuantity(stockDTO.getQuantity());
         stock.setBeer(beer);
-        
         beer.setStock(stock);
         stockRepository.save(stock);
+        logger.debug("SERVICE: Estoque para cerveja '{}' mapeado e salvo com quantidade: {}", beer.getName(), stock.getQuantity());
 
 
         beer.getCategories().clear();
         dto.getCategories().forEach(catDto -> {
             Category category = categoryRepository.findById(catDto.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+            logger.warn("SERVICE WARN: Categoria ID {} não encontrada durante mapeamento.", catDto.getId());
             beer.getCategories().add(category);
+            logger.debug("SERVICE: Categoria ID {} adicionada à cerveja.", category.getId());
         });
 
 
     }
+
 
 }

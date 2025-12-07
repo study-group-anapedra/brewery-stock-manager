@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.Counter;
+import org.slf4j.Logger; // Import do Logger
+import org.slf4j.LoggerFactory; // Import do LoggerFactory
 
 
 import java.time.Instant;
@@ -32,6 +34,8 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements OrderService {
 
+    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
+
     private final AuthService authService;
     private final UserService userService;
     private final OrderRepository orderRepository;
@@ -39,8 +43,8 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
 
-    private final Timer orderCreationTimer; // Timer para a criação de pedidos
-    private final Counter insufficientStockCounter; // Contador para erros de estoque
+    private final Timer orderCreationTimer;
+    private final Counter insufficientStockCounter;
 
     public OrderServiceImpl(
             AuthService authService,
@@ -49,7 +53,7 @@ public class OrderServiceImpl implements OrderService {
             BeerRepository beerRepository,
             UserRepository userRepository,
             OrderItemRepository orderItemRepository,
-            MeterRegistry registry // Injeção do MeterRegistry
+            MeterRegistry registry
     ) {
         this.authService = authService;
         this.userService = userService;
@@ -58,39 +62,51 @@ public class OrderServiceImpl implements OrderService {
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
 
-        // Inicializa o Timer
         this.orderCreationTimer = Timer.builder("stock_manager.order.creation_time")
                 .description("Tempo de execução da criação/atualização de pedidos")
                 .register(registry);
 
-        // Inicializa o Counter
         this.insufficientStockCounter = Counter.builder("stock_manager.order.insufficient_stock_errors")
                 .description("Contagem de pedidos que falharam por falta de estoque")
                 .register(registry);
     }
+    
     @Transactional(readOnly = true)
     @Override
     public OrderDTO findById(Long id) {
+        logger.info("SERVICE: Buscando pedido pelo ID: {}", id);
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
+                .orElseThrow(() -> {
+                    logger.warn("SERVICE WARN: Pedido ID {} não encontrado.", id);
+                    return new ResourceNotFoundException("Order not found with id " + id);
+                });
         authService.validateSelfOrAdmin(order.getClient().getId());
+        logger.info("SERVICE: Pedido ID {} encontrado e acesso validado.", id);
         return new OrderDTO(order, order.getItems());
     }
 
     @Transactional(readOnly = true)
     @Override
     public Page<OrderDTO> findAll(Pageable pageable) {
-        return orderRepository.findAll(pageable)
+        logger.info("SERVICE: Buscando todos os pedidos. Página: {}", pageable.getPageNumber());
+        Page<OrderDTO> page = orderRepository.findAll(pageable)
                 .map(order -> new OrderDTO(order, order.getItems()));
+        logger.info("SERVICE: Retornando {} pedidos na página {}.", page.getNumberOfElements(), pageable.getPageNumber());
+        return page;
     }
 
     @Transactional
     @Override
     public void delete(Long id) {
+        logger.warn("SERVICE: Tentativa de exclusão do pedido ID: {}", id);
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
+                .orElseThrow(() -> {
+                    logger.error("SERVICE ERROR: Pedido ID {} não encontrado para exclusão.", id);
+                    return new ResourceNotFoundException("Order not found with id " + id);
+                });
         authService.validateSelfOrAdmin(order.getClient().getId());
         orderRepository.delete(order);
+        logger.info("SERVICE: Pedido ID {} excluído com sucesso.", id);
     }
 
     @Transactional(readOnly = true)
@@ -102,11 +118,13 @@ public class OrderServiceImpl implements OrderService {
             String maxDate,
             Pageable pageable) {
 
+        logger.info("SERVICE: Buscando pedidos com filtros (Admin). Client ID: {}, Data Min: {}", clientId, minDate);
         authService.validateAdmin();
 
         User client = (clientId != null && clientId > 0)
                 ? userRepository.findById(clientId).orElse(null)
                 : null;
+
 
         Instant minInstant = null;
         Instant maxInstant = null;
@@ -122,19 +140,21 @@ public class OrderServiceImpl implements OrderService {
         }
 
 
-
         Page<Order> page = orderRepository.find(client, nameClient, cpfClient, minInstant, maxInstant, pageable);
         orderRepository.findOrder(page.getContent());
+        logger.info("SERVICE: Consulta de pedidos filtrados retornou {} elementos.", page.getNumberOfElements());
         return page.map(OrderDTO::new);
     }
 
     @Transactional
     @Override
     public OrderDTO save(OrderDTO dto) {
+        logger.info("SERVICE: Iniciando criação de novo pedido. Itens: {}", dto.getItems().size());
         return orderCreationTimer.record(() -> {
             Order order = new Order();
             copyDtoToEntity(dto, order);
             Order savedOrder = orderRepository.save(order);
+            logger.info("SERVICE: Pedido ID {} criado com sucesso para o cliente ID {}.", savedOrder.getId(), savedOrder.getClient().getId());
             return new OrderDTO(savedOrder, savedOrder.getItems());
         });
     }
@@ -142,12 +162,17 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     @Override
     public OrderDTO update(Long id, OrderDTO dto) {
+        logger.info("SERVICE: Iniciando atualização do pedido ID: {}", id);
         return orderCreationTimer.record(() -> {
             Order order = orderRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException("Order not found with id " + id));
+                    .orElseThrow(() -> {
+                        logger.warn("SERVICE WARN: Pedido ID {} não encontrado para atualização.", id);
+                        return new ResourceNotFoundException("Order not found with id " + id);
+                    });
             authService.validateSelfOrAdmin(order.getClient().getId());
             copyDtoToEntity(dto, order);
             Order savedOrder = orderRepository.save(order);
+            logger.info("SERVICE: Pedido ID {} atualizado com sucesso.", savedOrder.getId());
             return new OrderDTO(savedOrder, savedOrder.getItems());
         });
     }
@@ -155,16 +180,22 @@ public class OrderServiceImpl implements OrderService {
 
     private void copyDtoToEntity(OrderDTO dto, Order entity) {
 
+        logger.debug("SERVICE: Iniciando mapeamento e validação de estoque para o pedido.");
+
         entity.setMomentAt(Instant.now());
         entity.setOrderStatus(dto.getOrderStatus());
 
         User authenticatedUser = authService.authenticatedUser();
         if (authenticatedUser == null) {
+            logger.error("SERVICE ERROR: Usuário autenticado não encontrado.");
             throw new ForbiddenException("Authenticated user not found or not logged in.");
         }
         entity.setClient(authenticatedUser);
+        logger.debug("SERVICE: Pedido associado ao cliente ID: {}", authenticatedUser.getId());
+
 
         if (entity.getId() != null) {
+            logger.debug("SERVICE: Excluindo itens antigos do pedido ID {}.", entity.getId());
             orderItemRepository.deleteAll(entity.getItems());
             entity.getItems().clear();
         }
@@ -174,11 +205,16 @@ public class OrderServiceImpl implements OrderService {
                         .filter(java.util.Objects::nonNull)
                         .map(itemDTO -> {
                             if (itemDTO.getBeerId() == null) {
+                                logger.error("SERVICE ERROR: Beer ID nulo em item do pedido.");
                                 throw new IllegalArgumentException("Beer ID must not be null for an order item.");
                             }
 
                             Beer beer = beerRepository.findById(itemDTO.getBeerId())
-                                    .orElseThrow(() -> new ResourceNotFoundException("Beer not found: " + itemDTO.getBeerId()));
+                                    .orElseThrow(() -> {
+                                        logger.warn("SERVICE WARN: Cerveja não encontrada ID: {} para item do pedido.", itemDTO.getBeerId());
+                                        return new ResourceNotFoundException("Beer not found: " + itemDTO.getBeerId());
+                                    });
+                            logger.debug("SERVICE: Mapeando item para cerveja ID {} com quantidade {}.", beer.getId(), itemDTO.getQuantity());
 
                             return new OrderItem(entity, beer, itemDTO.getQuantity());
                         })
@@ -190,6 +226,9 @@ public class OrderServiceImpl implements OrderService {
 
             if (orderItem.getQuantity() > beer.getStock().getQuantity()) {
                 insufficientStockCounter.increment();
+                logger.error("SERVICE ERROR: FALHA DE ESTOQUE para cerveja ID: {}. Disponível: {}, Solicitado: {}", 
+                             beer.getId(), beer.getStock().getQuantity(), orderItem.getQuantity());
+
                 throw new InsufficientStockException(
                         "Insufficient stock for beer ID: "
                                 + beer.getId()
@@ -199,6 +238,8 @@ public class OrderServiceImpl implements OrderService {
             }
 
             orderItem.decreaseStock(orderItem.getQuantity());
+            logger.debug("SERVICE: Estoque da cerveja ID {} reduzido em {} unidades.", beer.getId(), orderItem.getQuantity());
         }
+        logger.debug("SERVICE: Mapeamento concluído e estoque de todos os itens reduzido.");
     }
 }

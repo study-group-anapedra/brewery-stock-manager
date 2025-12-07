@@ -14,9 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 @Service
 public class BeerRestockingServiceImpl implements BeerRestockingService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BeerRestockingServiceImpl.class);
 
     private final BeerRestockingRepository bookRestockingRepository;
     private final BeerRepository bookRepository;
@@ -33,6 +36,7 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     @Override
     @Transactional(readOnly = true)
     public List<BeerRestockingDTO> findAll() {
+        logger.info("SERVICE: Buscando todos os registros de reabastecimento.");
         List<BeerRestocking> list = bookRestockingRepository.findAll();
         return list.stream().map(BeerRestockingDTO::new).collect(Collectors.toList());
     }
@@ -40,13 +44,17 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     @Override
     @Transactional(readOnly = true)
     public BeerRestockingDTO findById(Long id) {
+        logger.info("SERVICE: Buscando reabastecimento pelo ID: {}", id);
         BeerRestocking entity = bookRestockingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Book restocking not found"));
         return new BeerRestockingDTO(entity);
     }
+
     @Override
     @Transactional
     public BeerRestockingDTO create(BeerRestockingDTO dto) {
+        logger.info("SERVICE: Iniciando criação de novo reabastecimento para cerveja ID: {}", dto.getBeerId());
+
         return restockingTimer.record(() -> {
             BeerRestocking entity = new BeerRestocking();
             copyDtoToEntity(dto, entity);
@@ -60,6 +68,8 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     @Override
     @Transactional
     public BeerRestockingDTO update(Long id, BeerRestockingDTO dto) {
+        logger.info("SERVICE: Iniciando atualização do reabastecimento ID: {}", id);
+
         BeerRestocking entity = bookRestockingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Book restocking not found"));
         copyDtoToEntity(dto, entity);
@@ -70,6 +80,8 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
     @Override
     @Transactional
     public void delete(Long id) {
+        logger.warn("SERVICE: Tentativa de exclusão do reabastecimento ID: {}", id);
+
         if (!bookRestockingRepository.existsById(id)) {
             throw new RuntimeException("Book restocking not found");
         }
@@ -88,4 +100,6 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
 
 
 }
+
+
 

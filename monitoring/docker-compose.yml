@@ -1,16 +1,65 @@
-version: '3.8'
-
 services:
+  # 1. Aplicação Spring Boot
+  stock-manager:
+    image: openjdk:17-jdk-slim
+    container_name: stock-manager
+    ports:
+      - "8082:8080"  # Porta externa 8082 mapeando para a interna 8080
+    networks:
+      - monitor-net
+    volumes:
+      - ./target/stock-manager.jar:/app/stock-manager.jar
+    command: ["java", "-jar", "/app/stock-manager.jar"]
+
+  # 2. Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - /home/ana/work-space/desafio-bradesco-dio-monolito/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - monitor-net
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
 
+  # 3. Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3000:3000"
+    networks:
+      - monitor-net
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+  # 4. Node Exporter
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9101:9100"  # Porta externa 9101 para não conflitar com host
+    networks:
+      - monitor-net
+
+  # 5. cAdvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8081:8080"  # Porta externa 8081 para não conflitar
+    networks:
+      - monitor-net
+    volumes:
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+networks:
+  monitor-net:
+    driver: bridge
+

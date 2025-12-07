@@ -6,12 +6,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping(value = "/restock")
 public class BeerRestockingController {
+
+    // 1. Definição do Logger
+    private static final Logger logger = LoggerFactory.getLogger(BeerRestockingController.class);
 
     private final BeerRestockingService restockingService;
 
@@ -25,7 +31,9 @@ public class BeerRestockingController {
      */
     @GetMapping
     public ResponseEntity<List<BeerRestockingDTO>> findAll() {
+        logger.info("CONTROLLER: GET /restock iniciado. Buscando todas as entradas.");
         List<BeerRestockingDTO> list = restockingService.findAll();
+        logger.info("CONTROLLER: GET /restock finalizado. Status: 200 OK. Total de entradas: {}", list.size());
         return ResponseEntity.ok().body(list);
     }
 
@@ -35,7 +43,9 @@ public class BeerRestockingController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<BeerRestockingDTO> findById(@PathVariable Long id) {
+        logger.info("CONTROLLER: GET /restock/{} iniciado.", id);
         BeerRestockingDTO dto = restockingService.findById(id);
+        logger.info("CONTROLLER: GET /restock/{} finalizado. Status: 200 OK.", id);
         return ResponseEntity.ok().body(dto);
     }
 
@@ -46,6 +56,9 @@ public class BeerRestockingController {
      */
     @PostMapping
     public ResponseEntity<BeerRestockingDTO> create(@RequestBody BeerRestockingDTO dto) {
+        logger.info("CONTROLLER: POST /restock iniciado. Cerveja ID: {}, Quantidade: {}", 
+                    dto.getBeerId(), dto.getQuantity());
+                    
         BeerRestockingDTO newDto = restockingService.create(dto);
         
         // Cria a URI do novo recurso (melhor prática REST)
@@ -54,7 +67,7 @@ public class BeerRestockingController {
                 .buildAndExpand(newDto.getBeerId())
                 .toUri();
         
-        // Retorna 201 Created
+        logger.info("CONTROLLER: POST /restock finalizado. Status: 201 CREATED. Nova entrada ID: {}", newDto.getBeerId());
         return ResponseEntity.created(uri).body(newDto);
     }
 
@@ -64,7 +77,9 @@ public class BeerRestockingController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<BeerRestockingDTO> update(@PathVariable Long id, @RequestBody BeerRestockingDTO dto) {
+        logger.info("CONTROLLER: PUT /restock/{} iniciado. Atualizando entrada.", id);
         BeerRestockingDTO updatedDto = restockingService.update(id, dto);
+        logger.info("CONTROLLER: PUT /restock/{} finalizado. Status: 200 OK.", id);
         return ResponseEntity.ok().body(updatedDto);
     }
 
@@ -75,7 +90,9 @@ public class BeerRestockingController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        logger.warn("CONTROLLER: DELETE /restock/{} iniciado. Tentativa de exclusão.", id);
         restockingService.delete(id);
+        logger.info("CONTROLLER: DELETE /restock/{} finalizado. Status: 204 NO CONTENT.", id);
         return ResponseEntity.noContent().build();
     }
 }

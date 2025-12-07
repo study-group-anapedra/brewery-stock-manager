@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,15 +19,15 @@ import java.util.stream.Collectors;
 @Service
 public class StockServiceImpl implements StockService {
 
+    private static final Logger logger = LoggerFactory.getLogger(StockServiceImpl.class);
+
     private final BeerRepository beerRepository;
 
     public StockServiceImpl(BeerRepository beerRepository) {
         this.beerRepository = beerRepository;
     }
 
-    // ------------------------------------------------------------
-    // 1. Filtro com Pageable
-    // ------------------------------------------------------------
+
     @Transactional(readOnly = true)
     @Override
     public Page<BeerStockDTO> findAllBeer(
@@ -36,6 +38,9 @@ public class StockServiceImpl implements StockService {
             Integer maxQuantity,
             Pageable pageable) {
 
+        logger.info("SERVICE: Buscando estoque com filtros - CatID: {}, Quantidade Min: {}. Página: {}", 
+                    categoryId, minQuantity, pageable.getPageNumber());
+
         String categorySearch = (categoryDescription != null && !categoryDescription.isBlank())
                 ? categoryDescription.trim()
                 : null;
@@ -44,7 +49,6 @@ public class StockServiceImpl implements StockService {
                 ? beerDescription.trim()
                 : null;
 
-        // Busca filtrada usando a query JPQL
         Page<Beer> filteredPage = beerRepository.findAllBeer(
                 categoryId,
                 categorySearch,
@@ -53,38 +57,44 @@ public class StockServiceImpl implements StockService {
                 maxQuantity,
                 pageable
         );
+        
+        logger.info("SERVICE: Consulta de estoque retornou {} elementos na página {}.", 
+                    filteredPage.getNumberOfElements(), pageable.getPageNumber());
 
         return filteredPage.map(BeerStockDTO::new);
     }
-    // ------------------------------------------------------------
-    // 2. Buscar por ID
-    // ------------------------------------------------------------
+    
+
     @Transactional(readOnly = true)
     @Override
     public BeerStockDTO findById(Long id) {
+        logger.info("SERVICE: Buscando estoque da cerveja pelo ID: {}", id);
         Beer entity = beerRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Cerveja não encontrada com ID: " + id));
-
+                .orElseThrow(() -> {
+                    logger.warn("SERVICE WARN: Cerveja ID {} não encontrada.", id);
+                    return new ResourceNotFoundException("Cerveja não encontrada com ID: " + id);
+                });
+        
+        logger.info("SERVICE: Estoque da cerveja ID {} encontrado. Quantidade: {}", id, entity.getStock().getQuantity());
         return new BeerStockDTO(entity);
     }
 
-    // ------------------------------------------------------------
-    // 3. Relatório de vencidos
-    // ------------------------------------------------------------
+
     @Transactional(readOnly = true)
     @Override
     public List<BeerStockDTO> getExpiredBeersReport(LocalDate referenceDate) {
+        logger.info("SERVICE: Gerando relatório de cervejas vencidas antes de: {}", referenceDate);
+        
         List<Beer> expiredBeers = beerRepository.findExpiredBeersBefore(referenceDate);
 
+        logger.info("SERVICE: Relatório de cervejas vencidas concluído. Total de itens: {}", expiredBeers.size());
+        
         return expiredBeers.stream()
                 .map(BeerStockDTO::new)
                 .collect(Collectors.toList());
     }
 
-    // ------------------------------------------------------------
-    // 4. Consulta PL/pgSQL com 4 parâmetros
-    // ------------------------------------------------------------
+
     @Override
     @Transactional(readOnly = true)
     public List<BeerStockDTO> findUsingPlpgsqlFunction(
@@ -95,12 +105,15 @@ public class StockServiceImpl implements StockService {
             Integer daysUntilExpiry,
             Integer pageSize,
             Integer pageNumber) {
+        
+        logger.info("SERVICE: Executando função PL/pgSQL com filtros - DaysUntilExpiry: {}, Page: {}", 
+                    daysUntilExpiry, pageNumber);
 
         String beerSearch = (beerDescription != null && !beerDescription.isBlank())
                 ? beerDescription.trim()
                 : null;
 
-        return beerRepository.findBeersUsingPlpgsqlFunction(
+        List<BeerStockDTO> result = beerRepository.findBeersUsingPlpgsqlFunction(
                 beerId,
                 beerSearch,
                 minQuantity,
@@ -109,7 +122,9 @@ public class StockServiceImpl implements StockService {
                 pageSize,
                 pageNumber
         );
+        
+        logger.info("SERVICE: Função PL/pgSQL retornou {} itens.", result.size());
+        
+        return result;
     }
-
-
 }

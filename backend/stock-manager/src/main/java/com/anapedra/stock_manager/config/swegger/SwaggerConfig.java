@@ -8,9 +8,25 @@ import io.swagger.v3.oas.models.info.License;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Classe de configuração responsável por inicializar e customizar o objeto
+ * {@link OpenAPI} (anteriormente conhecido como Swagger) para a documentação da API.
+ *
+ * <p>Define metadados importantes como título, descrição, versão, informações de
+ * contato e licença, que são exibidos na interface do Swagger UI.</p>
+ *
+ * @author Ana Santana
+ * @version 1.0
+ * @since 0.0.1-SNAPSHOT
+ */
 @Configuration
 public class SwaggerConfig {
 
+    /**
+     * Bean que configura o objeto principal da especificação OpenAPI.
+     *
+     * @return O objeto {@link OpenAPI} preenchido com metadados da API.
+     */
     @Bean
     public OpenAPI breweryInventoryOpenAPI() {
         return new OpenAPI()

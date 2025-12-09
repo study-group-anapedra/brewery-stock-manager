@@ -22,6 +22,7 @@ import org.springframework.data.domain.*;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.persistence.EntityNotFoundException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -85,6 +86,12 @@ public class BeerServiceTest {
         // Configuração de Mocks
         when(beerRepository.findById(existingId)).thenReturn(Optional.of(beer));
         when(beerRepository.findById(nonExistingId)).thenReturn(Optional.empty());
+
+        // CORREÇÃO ESSENCIAL: Mocks para o getReferenceById, usados na atualização
+        when(beerRepository.getReferenceById(existingId)).thenReturn(beer);
+        when(beerRepository.getReferenceById(nonExistingId)).thenThrow(EntityNotFoundException.class);
+        
+
         when(beerRepository.save(any(Beer.class))).thenReturn(beer);
         when(stockRepository.save(any(Stock.class))).thenReturn(stock);
 
@@ -145,19 +152,33 @@ public class BeerServiceTest {
     @Test
     @DisplayName("update deve retornar BeerInsertDTO quando ID existir")
     void update_shouldReturnBeerInsertDTO_whenIdExists() {
-        BeerInsertDTO result = beerService.update(existingId, beerInsertDTO);
+        // Simulação da atualização do DTO:
+        BeerInsertDTO updateDTO = new BeerInsertDTO(beer);
+        updateDTO.setName("New Name for Beer");
+
+        BeerInsertDTO result = beerService.update(existingId, updateDTO);
+
+        // Asserções
         assertNotNull(result);
         assertEquals(existingId, result.getId());
+
+        // CORREÇÃO DE VERIFICAÇÃO: Se o serviço usa getReferenceById, verificamos essa chamada.
+        verify(beerRepository, times(1)).getReferenceById(existingId); 
+        
+        // As verificações restantes permanecem corretas
         verify(beerRepository, times(1)).save(any(Beer.class));
         verify(stockRepository, times(1)).save(any(Stock.class));
-        verify(categoryRepository, times(beerInsertDTO.getCategories().size())).findById(anyLong());
+        verify(categoryRepository, times(updateDTO.getCategories().size())).findById(anyLong());
     }
 
     @Test
     @DisplayName("update deve lançar ResourceNotFoundException quando ID não existir")
     void update_shouldThrowResourceNotFoundException_whenIdDoesNotExist() {
+
         assertThrows(ResourceNotFoundException.class, () -> beerService.update(nonExistingId, beerInsertDTO));
-        verify(beerRepository, times(1)).findById(nonExistingId);
+
+        // CORREÇÃO DE VERIFICAÇÃO: Se o serviço usa getReferenceById, verificamos essa chamada.
+        verify(beerRepository, times(1)).getReferenceById(nonExistingId);
         verify(beerRepository, never()).save(any(Beer.class));
     }
 

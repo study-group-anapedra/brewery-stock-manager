@@ -124,7 +124,7 @@ public class BeerControllerTest {
     @WithMockUser(roles = "CLIENT")
     void testFindAll_ReturnsPagedBeerFilterDTO() throws Exception {
 
-        mockMvc.perform(get("/beers"))
+        mockMvc.perform(get("/api/v1/beers"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1L))
                 .andExpect(jsonPath("$.content[0].name").value("IPA Teste"))

@@ -8,28 +8,62 @@ import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.StockLossRepository;
 import com.anapedra.stock_manager.services.StockLossService;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.Counter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 
+/**
+ * Implementação da interface {@link StockLossService} responsável por gerenciar
+ * as operações de negócio relacionadas ao registro e consulta de perdas de estoque (StockLoss).
+ *
+ * <p>Esta classe garante o tratamento de exceções, a integridade transacional e
+ * inclui monitoramento de desempenho (Micrometer) para registro de perdas.</p>
+ *
+ * @author Ana Santana
+ * @version 1.0
+ * @see StockLossService
+ * @since 0.0.1-SNAPSHOT
+ */
 @Service
 public class StockLossServiceImpl implements StockLossService {
 
     private static final Logger logger = LoggerFactory.getLogger(StockLossServiceImpl.class);
 
+    /**
+     * Repositório para operações de persistência da entidade {@link Beer}.
+     */
     private final BeerRepository beerRepository;
+
+    /**
+     * Repositório para operações de persistência da entidade {@link StockLoss}.
+     */
     private final StockLossRepository stockLossRepository;
+
+    /**
+     * Timer do Micrometer para monitorar o tempo gasto no registro de perdas.
+     */
     private final Timer lossRegistrationTimer;
+
+    /**
+     * Contador do Micrometer para registrar o total de unidades perdidas.
+     */
     private final Counter totalUnitsLostCounter;
 
+    /**
+     * Construtor para injeção de dependências.
+     *
+     * @param beerRepository Repositório de cervejas.
+     * @param stockLossRepository Repositório de perdas de estoque.
+     * @param registry O registro de métricas do Micrometer.
+     */
     public StockLossServiceImpl(BeerRepository beerRepository, StockLossRepository stockLossRepository, MeterRegistry registry) {
         this.beerRepository = beerRepository;
         this.stockLossRepository = stockLossRepository;
@@ -41,7 +75,18 @@ public class StockLossServiceImpl implements StockLossService {
                 .register(registry);
     }
 
-
+    /**
+     * Busca paginada de registros de perda de estoque aplicando diversos filtros.
+     *
+     * @param reasonCode O código da razão de perda (Enum {@link LossReason}).
+     * @param beerId O ID da cerveja.
+     * @param beerName O nome da cerveja (parcial).
+     * @param categoryId O ID da categoria da cerveja.
+     * @param startDate A data mínima de registro da perda.
+     * @param endDate A data máxima de registro da perda.
+     * @param pageable O objeto de paginação (número da página, tamanho, ordenação).
+     * @return Uma {@link Page} de {@link StockLossDTO} contendo os resultados filtrados.
+     */
     @Transactional(readOnly = true)
     @Override
     public Page<StockLossDTO> findLossesByFilters(
@@ -75,7 +120,16 @@ public class StockLossServiceImpl implements StockLossService {
         return entityPage.map(StockLossDTO::new);
     }
 
-
+    /**
+     * Registra uma nova perda de estoque para uma cerveja, atualizando a quantidade em estoque.
+     *
+     * <p>O tempo de execução é monitorado pelo {@code lossRegistrationTimer}.</p>
+     *
+     * @param dto O {@link StockLossDTO} contendo os detalhes da perda.
+     * @return O {@link StockLossDTO} registrado com o ID gerado.
+     * @throws ResourceNotFoundException Se o ID da cerveja não for encontrado.
+     * @throws IllegalArgumentException Se a quantidade perdida for maior que o estoque atual.
+     */
     @Transactional
     @Override
     public StockLossDTO registerLoss(StockLossDTO dto) {
@@ -97,6 +151,9 @@ public class StockLossServiceImpl implements StockLossService {
                 throw new IllegalArgumentException("Quantidade perdida (" + dto.getQuantityLost() + ") é maior que o estoque atual (" + currentStock + ").");
             }
             
+            // NOTE: É crucial corrigir a lógica de mapeamento para LossReason
+            // A linha abaixo está usando hashCode() do DTO, o que é quase certamente um erro lógico. 
+            // Deve ser substituída pela lógica correta de conversão de LossReason.
             LossReason reason = LossReason.valueOf(dto.hashCode());
             logger.warn("SERVICE WARN: Usando hashCode() do DTO para LossReason. Verifique a lógica de mapeamento de enum.");
 
@@ -111,7 +168,8 @@ public class StockLossServiceImpl implements StockLossService {
             );
 
 
-            entity.getUpdateStock();
+            // Este método, presumivelmente, atualiza o estoque da Beer associada
+            entity.getUpdateStock(); 
             entity = stockLossRepository.save(entity);
 
             totalUnitsLostCounter.increment(dto.getQuantityLost());
@@ -122,6 +180,4 @@ public class StockLossServiceImpl implements StockLossService {
             return new StockLossDTO(entity);
         });
     }
-
-
 }

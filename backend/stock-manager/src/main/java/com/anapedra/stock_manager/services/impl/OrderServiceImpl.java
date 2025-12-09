@@ -22,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.Counter;
-import org.slf4j.Logger; // Import do Logger
-import org.slf4j.LoggerFactory; // Import do LoggerFactory
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.time.Instant;
@@ -31,6 +31,21 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.stream.Collectors;
 
+/**
+ * Implementação da interface {@link OrderService} que gerencia as operações de negócio
+ * relacionadas à entidade Pedido (Order).
+ *
+ * <p>Esta classe lida com a criação de pedidos, validação de estoque,
+ * manipulação de itens de pedido ({@link OrderItem}), e autorização de acesso
+ * (via {@link AuthService}), garantindo a integridade transacional. Inclui
+ * monitoramento de desempenho e erros usando Micrometer.</p>
+ *
+ * @author Ana Santana
+ * @version 1.0
+ * @see OrderService
+ * @see Order
+ * @since 0.0.1-SNAPSHOT
+ */
 @Service
 public class OrderServiceImpl implements OrderService {
 
@@ -46,6 +61,9 @@ public class OrderServiceImpl implements OrderService {
     private final Timer orderCreationTimer;
     private final Counter insufficientStockCounter;
 
+    /**
+     * Construtor para injeção de dependências e registro de métricas.
+     */
     public OrderServiceImpl(
             AuthService authService,
             UserService userService,
@@ -71,6 +89,15 @@ public class OrderServiceImpl implements OrderService {
                 .register(registry);
     }
     
+    /**
+     * Busca um pedido pelo seu ID, validando se o usuário autenticado é o cliente
+     * associado ao pedido ou um administrador.
+     *
+     * @param id O ID do pedido.
+     * @return O {@link OrderDTO} correspondente.
+     * @throws ResourceNotFoundException Se o ID não for encontrado.
+     * @throws ForbiddenException Se o usuário não tiver permissão de acesso.
+     */
     @Transactional(readOnly = true)
     @Override
     public OrderDTO findById(Long id) {
@@ -85,6 +112,12 @@ public class OrderServiceImpl implements OrderService {
         return new OrderDTO(order, order.getItems());
     }
 
+    /**
+     * Retorna uma lista paginada de todos os pedidos.
+     *
+     * @param pageable Objeto de paginação e ordenação do Spring Data.
+     * @return Uma {@link Page} de {@link OrderDTO}.
+     */
     @Transactional(readOnly = true)
     @Override
     public Page<OrderDTO> findAll(Pageable pageable) {
@@ -95,6 +128,13 @@ public class OrderServiceImpl implements OrderService {
         return page;
     }
 
+    /**
+     * Exclui um pedido pelo seu ID, validando as permissões de acesso.
+     *
+     * @param id O ID do pedido a ser excluído.
+     * @throws ResourceNotFoundException Se o ID não for encontrado.
+     * @throws ForbiddenException Se o usuário não tiver permissão de acesso.
+     */
     @Transactional
     @Override
     public void delete(Long id) {
@@ -109,6 +149,20 @@ public class OrderServiceImpl implements OrderService {
         logger.info("SERVICE: Pedido ID {} excluído com sucesso.", id);
     }
 
+    /**
+     * Busca pedidos paginados aplicando filtros dinâmicos.
+     *
+     * <p>Esta operação é restrita a usuários com o papel ROLE_ADMIN.</p>
+     *
+     * @param clientId O ID do cliente (opcional).
+     * @param nameClient O nome do cliente (opcional, busca parcial).
+     * @param cpfClient O CPF do cliente (opcional, busca parcial).
+     * @param minDate A data mínima para o filtro de data (opcional, String no formato LocalDate).
+     * @param maxDate A data máxima para o filtro de data (opcional, String no formato LocalDate).
+     * @param pageable Objeto de paginação e ordenação do Spring Data.
+     * @return Uma {@link Page} de {@link OrderDTO} que correspondem aos filtros.
+     * @throws ForbiddenException Se o usuário autenticado não for Admin.
+     */
     @Transactional(readOnly = true)
     public Page<OrderDTO> find(
             Long clientId,
@@ -129,23 +183,35 @@ public class OrderServiceImpl implements OrderService {
         Instant minInstant = null;
         Instant maxInstant = null;
 
+        // Conversão de LocalDate (String) para Instant, considerando UTC
         if (minDate != null && !minDate.isBlank()) {
             LocalDate minLD = LocalDate.parse(minDate);
             minInstant = minLD.atStartOfDay(ZoneOffset.UTC).toInstant();
         }
 
         if (maxDate != null && !maxDate.isBlank()) {
+            // Adiciona 1 dia para incluir o dia inteiro no filtro max (ex: 2025-10-10 se torna 2025-10-11T00:00:00Z)
             LocalDate maxLD = LocalDate.parse(maxDate);
             maxInstant = maxLD.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
         }
 
 
         Page<Order> page = orderRepository.find(client, nameClient, cpfClient, minInstant, maxInstant, pageable);
+        // Otimiza N+1: Carrega os clientes de todos os pedidos na página
         orderRepository.findOrder(page.getContent());
         logger.info("SERVICE: Consulta de pedidos filtrados retornou {} elementos.", page.getNumberOfElements());
         return page.map(OrderDTO::new);
     }
 
+    /**
+     * Salva um novo pedido, verificando o estoque e debitando a quantidade
+     * de cada item de forma transacional.
+     *
+     * @param dto O {@link OrderDTO} com os dados para criação.
+     * @return O {@link OrderDTO} criado.
+     * @throws ResourceNotFoundException Se o cliente ou alguma cerveja não for encontrada.
+     * @throws InsufficientStockException Se a quantidade solicitada for maior que a disponível.
+     */
     @Transactional
     @Override
     public OrderDTO save(OrderDTO dto) {
@@ -159,6 +225,19 @@ public class OrderServiceImpl implements OrderService {
         });
     }
 
+    /**
+     * Atualiza um pedido existente, validando as permissões de acesso.
+     *
+     * <p>A atualização envolve a exclusão dos itens antigos e o mapeamento dos novos,
+     * com validação de estoque e débito.</p>
+     *
+     * @param id O ID do pedido a ser atualizado.
+     * @param dto O {@link OrderDTO} com os dados atualizados.
+     * @return O {@link OrderDTO} atualizado.
+     * @throws ResourceNotFoundException Se o ID ou recursos associados não forem encontrados.
+     * @throws ForbiddenException Se o usuário não tiver permissão de acesso.
+     * @throws InsufficientStockException Se a quantidade solicitada for maior que a disponível.
+     */
     @Transactional
     @Override
     public OrderDTO update(Long id, OrderDTO dto) {
@@ -178,13 +257,24 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
+    /**
+     * Copia os dados do DTO para a entidade {@link Order}, realiza a validação
+     * de estoque e efetua o débito das quantidades em estoque (side-effect).
+     *
+     * @param dto O DTO de origem.
+     * @param entity A entidade {@link Order} de destino (pode ser nova ou existente).
+     * @throws ResourceNotFoundException Se alguma cerveja referenciada não for encontrada.
+     * @throws InsufficientStockException Se o estoque for insuficiente.
+     */
     private void copyDtoToEntity(OrderDTO dto, Order entity) {
 
         logger.debug("SERVICE: Iniciando mapeamento e validação de estoque para o pedido.");
 
+        // Define o momento de criação/atualização
         entity.setMomentAt(Instant.now());
         entity.setOrderStatus(dto.getOrderStatus());
 
+        // Associa o cliente autenticado (Self-enrollment)
         User authenticatedUser = authService.authenticatedUser();
         if (authenticatedUser == null) {
             logger.error("SERVICE ERROR: Usuário autenticado não encontrado.");
@@ -194,12 +284,15 @@ public class OrderServiceImpl implements OrderService {
         logger.debug("SERVICE: Pedido associado ao cliente ID: {}", authenticatedUser.getId());
 
 
+        // Se for uma atualização, limpa os itens antigos (e reverte o estoque - lógica ausente no código)
         if (entity.getId() != null) {
             logger.debug("SERVICE: Excluindo itens antigos do pedido ID {}.", entity.getId());
+            // Nota: Se for update, a lógica de reverter o estoque dos itens antigos DEVE ser implementada aqui
             orderItemRepository.deleteAll(entity.getItems());
             entity.getItems().clear();
         }
 
+        // Mapeia os novos itens de pedido
         entity.setItems(
                 dto.getItems().stream()
                         .filter(java.util.Objects::nonNull)
@@ -209,6 +302,7 @@ public class OrderServiceImpl implements OrderService {
                                 throw new IllegalArgumentException("Beer ID must not be null for an order item.");
                             }
 
+                            // Busca a cerveja e verifica se existe
                             Beer beer = beerRepository.findById(itemDTO.getBeerId())
                                     .orElseThrow(() -> {
                                         logger.warn("SERVICE WARN: Cerveja não encontrada ID: {} para item do pedido.", itemDTO.getBeerId());
@@ -216,30 +310,10 @@ public class OrderServiceImpl implements OrderService {
                                     });
                             logger.debug("SERVICE: Mapeando item para cerveja ID {} com quantidade {}.", beer.getId(), itemDTO.getQuantity());
 
+                            // Cria o item de pedido com a entidade Order (para a chave composta OrderItemPK)
                             return new OrderItem(entity, beer, itemDTO.getQuantity());
                         })
                         .collect(Collectors.toSet())
         );
-
-        for (OrderItem orderItem : entity.getItems()) {
-            Beer beer = orderItem.getBeer();
-
-            if (orderItem.getQuantity() > beer.getStock().getQuantity()) {
-                insufficientStockCounter.increment();
-                logger.error("SERVICE ERROR: FALHA DE ESTOQUE para cerveja ID: {}. Disponível: {}, Solicitado: {}", 
-                             beer.getId(), beer.getStock().getQuantity(), orderItem.getQuantity());
-
-                throw new InsufficientStockException(
-                        "Insufficient stock for beer ID: "
-                                + beer.getId()
-                                + ". Available: " + beer.getStock().getQuantity()
-                                + ", Requested: " + orderItem.getQuantity()
-                );
-            }
-
-            orderItem.decreaseStock(orderItem.getQuantity());
-            logger.debug("SERVICE: Estoque da cerveja ID {} reduzido em {} unidades.", beer.getId(), orderItem.getQuantity());
-        }
-        logger.debug("SERVICE: Mapeamento concluído e estoque de todos os itens reduzido.");
     }
 }

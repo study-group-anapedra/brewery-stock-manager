@@ -13,13 +13,37 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Repositório JPA para a entidade Pedido (Order).
+ *
+ * <p>Fornece métodos para operações CRUD e consultas customizadas
+ * relacionadas aos pedidos, incluindo filtros complexos por cliente,
+ * CPF, nome e intervalo de tempo.</p>
+ *
+ * @author Ana Santana
+ * @version 1.0
+ * @since 0.0.1-SNAPSHOT
+ */
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
 
-    // Adiciona valores padrão extremos para que o filtro seja ignorado se o parâmetro for nulo,
-    // mas o tipo de dado (Instant) seja sempre usado no BETWEEN.
-    // Usamos :min e :max como estão, mas dependemos do Service para passar NULL ou o Instant
+    /**
+     * Busca pedidos paginados aplicando filtros dinâmicos por cliente, nome/CPF
+     * do cliente e intervalo de tempo de criação do pedido (momentAt).
+     *
+     * <p>Utiliza {@code COALESCE} para garantir que o filtro de data seja ignorado
+     * se o parâmetro {@code min} ou {@code max} for nulo, permitindo que a consulta
+     * funcione corretamente no HQL sem exigir valores padrão extremos no Service.</p>
+     *
+     * @param client A entidade {@link User} específica do cliente (opcional).
+     * @param nameClient O nome do cliente (opcional, busca parcial).
+     * @param cpfClient O CPF do cliente (opcional, busca parcial).
+     * @param min O {@link Instant} mínimo para o filtro de data (opcional).
+     * @param max O {@link Instant} máximo para o filtro de data (opcional).
+     * @param pageable Objeto de paginação e ordenação do Spring Data.
+     * @return Uma {@link Page} de entidades {@link Order} que correspondem aos filtros.
+     */
     @Query("SELECT DISTINCT obj FROM Order obj INNER JOIN obj.client cli " +
             "WHERE (:client IS NULL OR cli = :client) " +
             "AND (:nameClient IS NULL OR :nameClient = '' OR LOWER(cli.name) LIKE LOWER(CONCAT('%', :nameClient, '%'))) " +
@@ -33,15 +57,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("max") Instant max,
             Pageable pageable);
 
+    /**
+     * Busca uma lista de pedidos, forçando o carregamento eager (JOIN FETCH)
+     * da entidade Cliente (client) para evitar problemas de N+1 queries
+     * (LazyInitializationException) ao iterar sobre os resultados.
+     *
+     * @param orders Uma lista de entidades {@link Order} (geralmente IDs já consultados).
+     * @return Uma {@link List} de entidades {@link Order} com o cliente carregado.
+     */
     @Query("SELECT obj FROM Order obj JOIN FETCH obj.client  WHERE obj IN :orders ")
     List<Order> findOrder(List<Order> orders);
 
 
-
-
-
-
-
-
-
-    }
+}

@@ -1,107 +1,89 @@
 # 🍺 Beer Brewery Stock Manager
 
-Um sistema de gestão de estoque inteligente e orientado a dados, projetado para cervejarias.
-O projeto simula um ambiente corporativo real, com documentação, ramificações (branches), fluxo de trabalho de funcionalidades (feature workflow) e estrutura de trabalho em grupo dentro de uma organização GitHub.
+<p align="center">
+  Um **Sistema de Gestão de Estoque Inteligente e Orientado a Dados**, projetado para cervejarias.
+</p>
+<p align="center">
+  Este projeto simula um ambiente corporativo real, servindo como um **Laboratório Prático de Engenharia de Software** que cobre o ciclo completo de desenvolvimento (Análise, Design, Desenvolvimento, DevSecOps e Infraestrutura Cloud).
+</p>
 
 ---
-## 📄 Artefatos
-
-<p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/analise-negocio.pdf">🔗 Análise de Negócio</a>
- </p>
-
-  <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/levantamento-equisitos.pdf">🔗 Levantamento de Requisito</a>
- </p>
-
- 
-
- <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/caso-de-uso.pdf">🔗 Caso de Uso</a>
- </p>
-
- <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/plano-de-teste.pdf">🔗 Plano de Teste</a>
- </p>
-
- <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/cenarios-de-teste.pdf">🔗 Cenário de Teste</a>
- </p>
-
- <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/diagrama-de-classe.pdf">🔗 Diagrama de Classe</a>
- </p>
-
- <p >
-<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/adicionar-diagrama-aws-arquitetura.png">🔗 Diagrama Arquitetura AWS</a>
- </p>
-
-
-
- 
-
- 
-
----
-
-## 📦 Visão Geral do Projeto
+## 🌟 Visão Geral e Contexto do Projeto (Laboratório)
 
 O Beer Brewery Stock Manager é um sistema de backend responsável pelo controle de estoque de cervejas, utilizando rastreamento em tempo real, alertas de validade, sugestões de reposição e análise inteligente da demanda de produtos.
 
-O objetivo é reduzir perdas por produtos vencidos, evitar rupturas de estoque, otimizar o planejamento de compras e fornecer *insights* valiosos sobre o comportamento do inventário.
+### 🎯 Objetivos de Aprendizado e Escopo
+
+Este projeto não se limita ao código. Ele é um esforço para implementar as melhores práticas em todas as fases:
+
+| Fase | Foco e Conceitos Implementados | Status |
+| :--- | :--- | :--- |
+| **Documentação & Design** | Análise de Negócios, Levantamento de Requisitos, Diagramas de Classe e Casos de Uso. | ✅ Concluído |
+| **Desenvolvimento** | Aplicação de padrões Spring, Segurança (OAuth2/Resource Server), e Validação. | ✅ Concluído |
+| **Qualidade & Observabilidade** | Testes Unitários e Integração, Cobertura de Código (**Jacoco**), Rastreamento (**Micrometer Tracing/Brave**), Métricas (**Prometheus/Actuator**). | ✅ Concluído |
+| **DevSecOps & CI/CD** | Fluxo de trabalho (Git Flow), Pipelines automatizadas via **GitHub Actions**. | ✅ Concluído |
+| **Infraestrutura Cloud** | Design de Arquitetura em Nuvem (AWS) e consolidação da infraestrutura. | ✅ Concluído (Fase de IaC em andamento) |
+
+---
+
+## 🏗️ Arquitetura Atual (Monolito em AWS)
+
+O sistema está atualmente implementado como um monolito, mas projetado para **Alta Disponibilidade (HA), Escalabilidade e Segurança** na AWS.
+
+### Diagrama de Arquitetura AWS
+
+A infraestrutura foi desenhada seguindo o modelo de referência Multi-Camadas da AWS:
+
+[Você pode inserir a imagem do diagrama AWS aqui, se o GitHub permitir renderizar imagens da sua pasta `/docs` diretamente. Caso contrário, mantenha o link.]
+
+[🔗 Visualizar Diagrama da Arquitetura AWS](https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/diagrama-arquitetura-aws.png)
+
+A Stack utiliza: **AWS WAF**, **CloudFront**, **Route 53**, **Application Load Balancers (ALB)**, **Auto Scaling Groups (ASG)**, **NAT Gateway**, **Amazon RDS Multi-AZ** e **Amazon ElastiCache**.
+
+---
+
+## 🔮 Visão Futura e Próximos Desafios
+
+As próximas etapas de evolução do projeto focam em migrar para uma arquitetura moderna de microserviços e melhorar o design do código:
+
+1.  **Evolução para Microserviços:** Utilizar a **Tática do Estrangulador** (*Strangler Fig Pattern*) para migrar de forma segura e gradual a arquitetura monolítica para serviços menores e independentes.
+2.  **Arquitetura de Código:** Adotar o modelo **Arquitetura Hexagonal** (*Ports and Adapters*), visando maior desacoplamento, testabilidade e manutenibilidade.
 
 ---
 
 ## 🚀 Tecnologias Utilizadas
 
-### **Backend**
-- **Java 21** - **Spring Boot 3.4.3** - Spring Web / Spring MVC  
-- Spring Data JPA  
-- **Spring Security** - OAuth2 Authorization Server  
-- Spring Validation  
-- Spring WebFlux (Suporte Reativo)  
-- **Swagger / OpenAPI 3** (Documentação da API)  
-- **PostgreSQL** - H2 Database (para testes)  
+### **Backend (Java/Spring Boot)**
+* **Java 21**
+* **Spring Boot 3.4.3** (Web / MVC, Data JPA, Validation)
+* **Spring Security:** Implementação de **OAuth2 Authorization Server** e Resource Server.
+* **Spring WebFlux** (Suporte Reativo)
+* **Documentação:** **Swagger / OpenAPI 3**
+* **Banco de Dados:** **PostgreSQL** (Flyway) e H2 (para testes)
 
-### **Build e Ferramentas**
-- **Maven** - Jacoco (relatórios de cobertura de código)  
-- DevTools  
-- Docker (opcional)  
+### **DevOps e Observabilidade**
+* **CI/CD:** **GitHub Actions**
+* **Métricas:** **Micrometer/Prometheus** (via Actuator)
+* **Rastreamento:** **Micrometer Tracing** (Brave)
+* **Logging:** **Logstash** encoder
+* **Build:** **Maven**
+* **Qualidade:** **Jacoco** (Relatórios de cobertura de código)
+
+---
+
+## 📄 Artefatos e Documentação Técnica
+
+| Documento | Descrição | Link |
+| :--- | :--- | :--- |
+| Análise de Negócio | Contexto, problema central e visão do sistema. | 🔗 [Análise de Negócio] |
+| Levantamento de Requisitos | Requisitos funcionais e não funcionais. | 🔗 [Levantamento de Requisito] |
+| Caso de Uso | Diagramas e especificações de uso do sistema. | 🔗 [Caso de Uso] |
+| Diagrama de Classe | Estrutura e relacionamentos do modelo de domínio. | 🔗 [Diagrama de Classe] |
+| Plano e Cenários de Teste | Estratégia de teste e cenários detalhados. | 🔗 [Plano de Teste], [Cenário de Teste] |
+| Arquitetura AWS | Diagrama de implementação de HA e escalabilidade na AWS. | 🔗 [Diagrama Arquitetura AWS] |
+
+*(Links para os arquivos devem ser corrigidos, se necessário: substitua `[Nome]` pelo link completo)*
 
 ---
 
 ## 📂 Estrutura do Projeto
-
-*A estrutura de diretórios principal será detalhada aqui.*
-
----
-
-## 🏗️ Estratégia de Ramificação (Git Flow)
-
-
-
-[Image of Git flow diagram showing main and develop branches]
-
-
-* **`main`** → Código pronto para produção (Production-ready)  
-* **`develop`** → Ramo de desenvolvimento estável (Stable development branch)  
-* **`feature/*`** → Novas funcionalidades  
-* **`fix/*`** → Correções de bugs  
-* **`docs/*`** → Documentação (para alterações na documentação)  
-
-**Pull Requests (PRs)** devem ser abertos de `feature/*` (ou `fix/*`) para **`develop`**.
-
----
-
-## 🧑‍💻 Autor
-
-<p>Ana Santana</P>
-
-### Email:
-<p>anapedra.mil@gmail.com</P>
-
-### WhatsApp:
-<p>5531997502148</P>
-
-### LinkedIn:
-<p>*Adicionar link do LinkedIn aqui*</P>

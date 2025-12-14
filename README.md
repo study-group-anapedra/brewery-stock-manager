@@ -7,8 +7,40 @@ O projeto simula um ambiente corporativo real, com documentação, ramificaçõe
 ## 📄 Artefatos
 
 <p >
-<a href="https://docs.google.com/document/d/1bXrs6-uIa20rmhhRB8cw-AzJeq2-sAGJB3oAHzQPPck/edit?tab=t.0">🔗 Análise de Negócio</a>
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/analise-negocio.pdf">🔗 Análise de Negócio</a>
  </p>
+
+  <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/levantamento-equisitos.pdf">🔗 Levantamento de Requisito</a>
+ </p>
+
+ 
+
+ <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/caso-de-uso.pdf">🔗 Caso de Uso</a>
+ </p>
+
+ <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/plano-de-teste.pdf">🔗 Plano de Teste</a>
+ </p>
+
+ <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/cenarios-de-teste.pdf">🔗 Cenário de Teste</a>
+ </p>
+
+ <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/diagrama-de-classe.pdf">🔗 Diagrama de Classe</a>
+ </p>
+
+ <p >
+<a href="https://github.com/study-group-anapedra/brewery-stock-manager/blob/develop/docs/adicionar-diagrama-aws-arquitetura.png">🔗 Diagrama Arquitetura AWS</a>
+ </p>
+
+
+
+ 
+
+ 
 
 ---
 

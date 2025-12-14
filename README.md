@@ -13,7 +13,7 @@ As regras de negócio, fluxos funcionais e objetivos do sistema estão detalhado
 
 ---
 
-## 🧪 Descrição do Projeto
+## Descrição do Projeto
 
 Este projeto é um **laboratório prático de aprendizado**, no qual estou adquirindo experiência real na implementação de **todo o ciclo de desenvolvimento de software**, desde a concepção e análise de negócio até a implementação e consolidação da infraestrutura na **AWS**.
 

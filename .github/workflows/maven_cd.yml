@@ -1,67 +1,53 @@
 name: Java CD - Deploy para AWS
 
-# 1. Quando o workflow será ativado
 on:
   push:
-    # Este workflow SÓ rodará quando a develop for mesclada (merge) na main
     branches: [ "main" ]
 
 jobs:
   release-and-deploy:
     runs-on: ubuntu-latest
-    
-    # Define as permissões necessárias
+
     permissions:
-      contents: read # Apenas leitura para Checkout
-      id-token: write # Permissão CRUCIAL para autenticação OIDC na AWS (Melhor prática)
-      
+      contents: read
+      id-token: write
+
     steps:
-    - name: Checkout do Código
-      uses: actions/checkout@v4
-      
-    # 1. Configurar o ambiente Java 21
-    - name: Configurar JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: 'maven'
+      - name: Checkout do Código
+        uses: actions/checkout@v4
 
-    # 2. Compilar e Criar Build Final
-    - name: Criar Build de Release com Maven
-      # Comando padrão para gerar o JAR final
-      run: mvn -B clean install
-      
-# --- COMEÇO DOS PASSOS DE DEPLOY (CD) ---
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21' # Batendo com seu pom.xml
+          distribution: 'temurin'
+          cache: 'maven'
 
-    # 3. Adicionar o Login e Configuração da AWS (Passo novo)
-    - name: Configurar Credenciais da AWS (Via Secrets)
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        # ATENÇÃO: Configure esses valores como GitHub Secrets!
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: sua-regiao-da-aws # EX: us-east-1, sa-east-1, etc.
+      - name: Criar Build de Release com Maven
+        # clean package é o ideal para gerar o JAR que vai para o S3
+        run: mvn -B clean package -DskipTests
 
-    # 4. Enviar Artefato para o S3 (Serviço de Armazenamento)
-    - name: Enviar Build para o S3
-      run: |
-        # O nome do JAR é definido no seu pom.xml. Assumindo que o nome é 'app.jar'
-        JAR_NAME=$(ls target/*.jar | head -n 1 | xargs basename) 
-        
-        echo "Copiando $JAR_NAME para o bucket S3..."
-        aws s3 cp target/$JAR_NAME s3://seu-nome-de-bucket/aplicacao/$JAR_NAME
-        
-    # 5. Acionar o AWS CodeDeploy (Serviço de Implantação)
-    - name: Acionar o AWS CodeDeploy
-      run: |
-        JAR_NAME=$(ls target/*.jar | head -n 1 | xargs basename)
+      - name: Configurar Credenciais da AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #
+          aws-region: ${{ secrets.AWS_REGION }} #
 
-        # ATENÇÃO: Substitua pelos nomes reais da sua aplicação e grupo de deploy
-        aws deploy create-deployment \
-          --application-name SeuNomeDaAplicacao \
-          --deployment-group-name SeuGrupoDeDeploy \
-          --s3-location bucket=seu-nome-de-bucket,key=aplicacao/$JAR_NAME,bundleType=zip \
-          --ignore-application-stop-failures
+      - name: Enviar Build para o S3
+        run: |
+          # O artifactId no seu pom.xml é 'stock-manager'
+          JAR_NAME=$(ls target/stock-manager-*.jar | head -n 1 | xargs basename) 
+          
+          echo "Enviando $JAR_NAME para o S3..."
+          # Substitua 'seu-nome-de-bucket' pelo nome real do seu Bucket S3
+          aws s3 cp target/$JAR_NAME s3://seu-nome-de-bucket/aplicacao/stock-manager.jar
 
-# --- FIM DOS PASSOS DE DEPLOY ---
+      - name: Acionar o AWS CodeDeploy
+        run: |
+          # Use o nome da aplicação e grupo de deploy definidos na sua infra AWS
+          aws deploy create-deployment \
+            --application-name StockManagerApp \
+            --deployment-group-name StockManagerDG \
+            --s3-location bucket=seu-nome-de-bucket,key=aplicacao/stock-manager.jar,bundleType=zip \
+            --ignore-application-stop-failures

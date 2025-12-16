@@ -73,8 +73,8 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
      * Executa uma função de banco de dados nativa (PL/pgSQL) para buscar cervejas
      * com filtros complexos (incluindo dias para expiração).
      *
-     * <p>Esta abordagem é usada para otimizar consultas complexas ou aproveitar
-     * lógicas de negócios implementadas diretamente no banco.</p>
+     * <p>Utiliza CASTs explícitos para resolver inconsistências de tipos entre o driver
+     * JDBC e o PostgreSQL, garantindo que a função seja localizada corretamente.</p>
      *
      * @param beerId ID da cerveja (opcional).
      * @param beerDescription Descrição da cerveja (opcional).
@@ -86,16 +86,16 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
      * @return Uma {@link List} de {@link BeerStockDTO} resultante da função.
      */
     @Query(value = """
-    SELECT * FROM find_beers_using_filters(
-        :beerId,
-        :beerDescription,
-        :minQuantity,
-        :maxQuantity,
-        :daysUntilExpiry,
-        :pageSize,
-        :pageNumber
-    )
-""", nativeQuery = true)
+        SELECT * FROM find_beers_using_filters(
+            CAST(:beerId AS BIGINT), 
+            CAST(:beerDescription AS TEXT), 
+            CAST(:minQuantity AS INTEGER), 
+            CAST(:maxQuantity AS INTEGER), 
+            CAST(:daysUntilExpiry AS INTEGER), 
+            CAST(:pageSize AS INTEGER), 
+            CAST(:pageNumber AS INTEGER)
+        )
+    """, nativeQuery = true)
     List<BeerStockDTO> findBeersUsingPlpgsqlFunction(
             @Param("beerId") Long beerId,
             @Param("beerDescription") String beerDescription,
@@ -105,8 +105,6 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
             @Param("pageSize") Integer pageSize,
             @Param("pageNumber") Integer pageNumber
     );
-
-
     // ------------------------------------------------------------
     // 3. Relatório de cervejas vencidas
     // ------------------------------------------------------------

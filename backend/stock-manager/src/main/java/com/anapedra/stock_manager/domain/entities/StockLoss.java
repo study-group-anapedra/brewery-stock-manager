@@ -44,18 +44,17 @@ public class StockLoss implements Serializable {
     @ManyToOne
     @JoinColumn(name = "beer_id", nullable = false)
     private Beer beer;
-
+ /**
+     * O código inteiro que representa o motivo da perda (mapeado para LossReason).
+     */
+    @Column(nullable = false)
+    private Integer reason;
     /**
      * A quantidade de unidades perdidas.
      */
     @Column(nullable = false)
     private Integer quantityLost;
 
-    /**
-     * O código inteiro que representa o motivo da perda (mapeado para LossReason).
-     */
-    @Column(nullable = false)
-    private Integer reason;
 
     /**
      * A data em que a perda foi registrada ou ocorreu.
@@ -81,11 +80,11 @@ public class StockLoss implements Serializable {
      * @param id O identificador do registro.
      * @param beer A cerveja envolvida na perda.
      * @param quantityLost A quantidade perdida.
-     * @param reason O motivo da perda (Enum LossReason).
+    * @param reason O motivo da perda (Enum LossReason).
      * @param lossDate A data da perda.
      * @param description A descrição ou observação.
      */
-    public StockLoss(Long id, Beer beer, Integer quantityLost, LossReason reason, LocalDate lossDate, String description) {
+    public StockLoss(Long id, Beer beer, Integer quantityLost,LossReason reason ,LocalDate lossDate, String description) {
         this.id = id;
         this.beer = beer;
         this.quantityLost = quantityLost;
@@ -159,21 +158,7 @@ public class StockLoss implements Serializable {
         this.quantityLost = quantityLost;
     }
 
-    /**
-     * Retorna o código inteiro do motivo da perda.
-     * @return O código do motivo.
-     */
-    public Integer getReason() {
-        return reason;
-    }
 
-    /**
-     * Define o código inteiro do motivo da perda.
-     * @param reason O novo código do motivo.
-     */
-    public void setReason(Integer reason) {
-        this.reason = reason;
-    }
 
     /**
      * Retorna a data em que a perda ocorreu.

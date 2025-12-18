@@ -67,7 +67,6 @@ public class OrderItemDTO implements Serializable {
         this.beerId = beerId;
         this.quantity = quantity;
 
-
     }
 
     /**

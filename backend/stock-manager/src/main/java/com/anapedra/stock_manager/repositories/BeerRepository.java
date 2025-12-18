@@ -37,7 +37,7 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
      * sem registro de estoque sejam consideradas com quantidade zero nos filtros.</p>
      *
      * @param categoryId ID da categoria (opcional).
-     * @param categoryDescription Descrição da categoria (opcional, busca parcial).
+     * @param categoryName Descrição da categoria (opcional, busca parcial).
      * @param beerDescription Nome/descrição da cerveja (opcional, busca parcial).
      * @param minQuantity Quantidade mínima em estoque (opcional).
      * @param maxQuantity Quantidade máxima em estoque (opcional).
@@ -49,8 +49,8 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
             LEFT JOIN b.categories c
             LEFT JOIN b.stock s
             WHERE (:categoryId IS NULL OR c.id = :categoryId)
-              AND (:categoryDescription IS NULL OR :categoryDescription = ''
-                    OR LOWER(CAST(c.description AS text)) LIKE LOWER(CONCAT('%', :categoryDescription, '%')))
+              AND (:categoryName IS NULL OR :categoryName = ''
+                    OR LOWER(CAST(c.name AS text)) LIKE LOWER(CONCAT('%', :categoryName, '%')))
               AND (:beerDescription IS NULL OR :beerDescription = ''
                     OR LOWER(CAST(b.name AS text)) LIKE LOWER(CONCAT('%', :beerDescription, '%')))
               AND (:minQuantity IS NULL OR COALESCE(s.quantity, 0) >= :minQuantity)
@@ -58,7 +58,7 @@ public interface BeerRepository extends JpaRepository<Beer, Long> {
             """)
     Page<Beer> findAllBeer(
             @Param("categoryId") Long categoryId,
-            @Param("categoryDescription") String categoryDescription,
+            @Param("categoryName") String categoryName,
             @Param("beerDescription") String beerDescription,
             @Param("minQuantity") Integer minQuantity,
             @Param("maxQuantity") Integer maxQuantity,

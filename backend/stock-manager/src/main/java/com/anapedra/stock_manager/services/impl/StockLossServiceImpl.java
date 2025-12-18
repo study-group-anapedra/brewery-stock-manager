@@ -7,6 +7,7 @@ import com.anapedra.stock_manager.domain.enums.LossReason;
 import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.StockLossRepository;
 import com.anapedra.stock_manager.services.StockLossService;
+import com.anapedra.stock_manager.services.exceptions.InsufficientStockException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -18,18 +19,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 /**
  * Implementação da interface {@link StockLossService} responsável por gerenciar
- * as operações de negócio relacionadas ao registro e consulta de perdas de estoque (StockLoss).
+ * as operações de negócio relacionadas ao registro e consulta de perdas de estoque.
  *
- * <p>Esta classe garante o tratamento de exceções, a integridade transacional e
- * inclui monitoramento de desempenho (Micrometer) para registro de perdas.</p>
+ * <p>
+ * Esta classe:
+ * <ul>
+ *   <li>Centraliza regras de negócio</li>
+ *   <li>Garante consistência transacional</li>
+ *   <li>Atualiza o estoque de forma segura</li>
+ *   <li>Aplica observabilidade via Micrometer</li>
+ * </ul>
+ * </p>
  *
  * @author Ana Santana
  * @version 1.0
- * @see StockLossService
  * @since 0.0.1-SNAPSHOT
  */
 @Service
@@ -37,55 +45,34 @@ public class StockLossServiceImpl implements StockLossService {
 
     private static final Logger logger = LoggerFactory.getLogger(StockLossServiceImpl.class);
 
-    /**
-     * Repositório para operações de persistência da entidade {@link Beer}.
-     */
     private final BeerRepository beerRepository;
-
-    /**
-     * Repositório para operações de persistência da entidade {@link StockLoss}.
-     */
     private final StockLossRepository stockLossRepository;
 
-    /**
-     * Timer do Micrometer para monitorar o tempo gasto no registro de perdas.
-     */
+    /** Métrica de tempo para registro de perdas */
     private final Timer lossRegistrationTimer;
 
-    /**
-     * Contador do Micrometer para registrar o total de unidades perdidas.
-     */
+    /** Métrica de volume total de unidades perdidas */
     private final Counter totalUnitsLostCounter;
 
-    /**
-     * Construtor para injeção de dependências.
-     *
-     * @param beerRepository Repositório de cervejas.
-     * @param stockLossRepository Repositório de perdas de estoque.
-     * @param registry O registro de métricas do Micrometer.
-     */
-    public StockLossServiceImpl(BeerRepository beerRepository, StockLossRepository stockLossRepository, MeterRegistry registry) {
+    public StockLossServiceImpl(
+            BeerRepository beerRepository,
+            StockLossRepository stockLossRepository,
+            MeterRegistry registry) {
+
         this.beerRepository = beerRepository;
         this.stockLossRepository = stockLossRepository;
+
         this.lossRegistrationTimer = Timer.builder("stock_manager.stock_loss.registration_time")
                 .description("Tempo de execução do registro de perda de estoque")
                 .register(registry);
+
         this.totalUnitsLostCounter = Counter.builder("stock_manager.stock_loss.total_units_lost")
-                .description("Total de unidades de cerveja registradas como perda")
+                .description("Total de unidades registradas como perda")
                 .register(registry);
     }
 
     /**
-     * Busca paginada de registros de perda de estoque aplicando diversos filtros.
-     *
-     * @param reasonCode O código da razão de perda (Enum {@link LossReason}).
-     * @param beerId O ID da cerveja.
-     * @param beerName O nome da cerveja (parcial).
-     * @param categoryId O ID da categoria da cerveja.
-     * @param startDate A data mínima de registro da perda.
-     * @param endDate A data máxima de registro da perda.
-     * @param pageable O objeto de paginação (número da página, tamanho, ordenação).
-     * @return Uma {@link Page} de {@link StockLossDTO} contendo os resultados filtrados.
+     * Busca paginada de perdas de estoque com filtros opcionais.
      */
     @Transactional(readOnly = true)
     @Override
@@ -98,13 +85,13 @@ public class StockLossServiceImpl implements StockLossService {
             LocalDate endDate,
             Pageable pageable) {
 
-        logger.info("SERVICE: Buscando perdas de estoque com filtros. Cerveja ID: {}, Razão: {}", beerId, reasonCode);
+        logger.info("SERVICE: Buscando perdas de estoque. Beer ID: {}, Reason: {}", beerId, reasonCode);
 
         String beerSearch = (beerName != null && !beerName.trim().isEmpty())
                 ? beerName.trim()
                 : null;
 
-        Page<StockLoss> entityPage = stockLossRepository.findLossesByFilters(
+        Page<StockLoss> page = stockLossRepository.findLossesByFilters(
                 reasonCode,
                 beerId,
                 beerSearch,
@@ -113,71 +100,86 @@ public class StockLossServiceImpl implements StockLossService {
                 endDate,
                 pageable
         );
-        
-        logger.info("SERVICE: Consulta de perdas retornou {} elementos na página {}.", 
-                    entityPage.getNumberOfElements(), pageable.getPageNumber());
 
-        return entityPage.map(StockLossDTO::new);
+        logger.info("SERVICE: Consulta retornou {} registros.", page.getTotalElements());
+
+        return page.map(StockLossDTO::new);
     }
 
     /**
-     * Registra uma nova perda de estoque para uma cerveja, atualizando a quantidade em estoque.
-     *
-     * <p>O tempo de execução é monitorado pelo {@code lossRegistrationTimer}.</p>
-     *
-     * @param dto O {@link StockLossDTO} contendo os detalhes da perda.
-     * @return O {@link StockLossDTO} registrado com o ID gerado.
-     * @throws ResourceNotFoundException Se o ID da cerveja não for encontrado.
-     * @throws IllegalArgumentException Se a quantidade perdida for maior que o estoque atual.
+     * Registra uma nova perda de estoque e atualiza o estoque da cerveja.
      */
     @Transactional
     @Override
     public StockLossDTO registerLoss(StockLossDTO dto) {
-        logger.info("SERVICE: Iniciando registro de perda de estoque. Cerveja ID: {}, Quantidade: {}", 
-                    dto.getBeerId(), dto.getQuantityLost());
-                    
+
+        logger.info("SERVICE: Iniciando registro de perda. Beer ID: {}, Quantity: {}",
+                dto.getBeerId(), dto.getQuantityLost());
+
         return lossRegistrationTimer.record(() -> {
-            Beer beer = beerRepository.findById(dto.getBeerId())
-                    .orElseThrow(() -> {
-                        logger.warn("SERVICE WARN: Cerveja não encontrada ID: {} para registro de perda.", dto.getBeerId());
-                        return new ResourceNotFoundException("Cerveja não encontrada. ID: " + dto.getBeerId());
-                    });
-
-
-            Integer currentStock = beer.getStock().getQuantity();
-            if (dto.getQuantityLost() > currentStock) {
-                logger.error("SERVICE ERROR: Estoque insuficiente. Cerveja ID: {}. Disponível: {}, Solicitado: {}",
-                             beer.getId(), currentStock, dto.getQuantityLost());
-                throw new IllegalArgumentException("Quantidade perdida (" + dto.getQuantityLost() + ") é maior que o estoque atual (" + currentStock + ").");
-            }
-            
-            // NOTE: É crucial corrigir a lógica de mapeamento para LossReason
-            // A linha abaixo está usando hashCode() do DTO, o que é quase certamente um erro lógico. 
-            // Deve ser substituída pela lógica correta de conversão de LossReason.
-            LossReason reason = LossReason.valueOf(dto.hashCode());
-            logger.warn("SERVICE WARN: Usando hashCode() do DTO para LossReason. Verifique a lógica de mapeamento de enum.");
-
-
-            StockLoss entity = new StockLoss(
-                    null,
-                    beer,
-                    dto.getQuantityLost(),
-                    reason,
-                    dto.getLossDate(),
-                    dto.getDescription()
-            );
-
-
-            // Este método, presumivelmente, atualiza o estoque da Beer associada
-            entity.getUpdateStock(); 
+            StockLoss entity = new StockLoss();
+            copyDtoToEntity(dto, entity);
             entity = stockLossRepository.save(entity);
-
-            totalUnitsLostCounter.increment(dto.getQuantityLost());
-            
-            logger.info("SERVICE: Perda ID {} registrada com sucesso. Estoque de cerveja ID {} reduzido em {} unidades.",
-                        entity.getId(), beer.getId(), entity.getQuantityLost());
-
             return new StockLossDTO(entity);
         });
+    }
+
+    /**
+     * Mapeia dados do DTO para a entidade aplicando regras de negócio
+     * e validações de estoque.
+     */
+    private void copyDtoToEntity(StockLossDTO dto, StockLoss entity) {
+
+        if (dto.getBeerId() == null) {
+            throw new IllegalArgumentException("Beer ID must not be null.");
+        }
+
+        Beer beer = beerRepository.findById(dto.getBeerId())
+                .orElseThrow(() -> {
+                    logger.warn("SERVICE WARN: Cerveja não encontrada. ID: {}", dto.getBeerId());
+                    return new ResourceNotFoundException(
+                            "Cerveja não encontrada. ID: " + dto.getBeerId()
+                    );
+                });
+
+        if (dto.getQuantityLost() == null || dto.getQuantityLost() <= 0) {
+            throw new IllegalArgumentException("Quantity lost must be greater than zero.");
+        }
+
+        int currentStock = beer.getStock().getQuantity();
+
+        if (dto.getQuantityLost() > currentStock) {
+            logger.error(
+                    "SERVICE ERROR: Estoque insuficiente. Beer ID: {}, Disponível: {}, Solicitado: {}",
+                    beer.getId(), currentStock, dto.getQuantityLost()
+            );
+
+            throw new InsufficientStockException(
+                    "Quantidade insuficiente em estoque para a cerveja: " + beer.getName() +
+                    ". Disponível: " + currentStock +
+                    ", Solicitado: " + dto.getQuantityLost()
+            );
+        }
+
+        entity.setBeer(beer);
+        entity.setQuantityLost(dto.getQuantityLost());
+        entity.setLossReason(
+                dto.getReason() != null ? dto.getReason() : LossReason.OTHER
+        );
+        entity.setLossDate(
+                dto.getLossDate() != null ? dto.getLossDate() : LocalDate.now()
+        );
+        entity.setDescription(dto.getDescription());
+        entity.setRegistrationMoment(Instant.now());
+
+        // Atualização do estoque encapsulada na entidade
+        entity.getBeer().getStock().setQuantity(entity.getBeer().getStock().getQuantity() - entity.getQuantityLost());
+
+        totalUnitsLostCounter.increment(dto.getQuantityLost());
+
+        logger.info(
+                "SERVICE: Perda registrada com sucesso. Beer ID: {}, Redução: {} unidades.",
+                beer.getId(), dto.getQuantityLost()
+        );
     }
 }

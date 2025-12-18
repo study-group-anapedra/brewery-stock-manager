@@ -62,7 +62,7 @@ public class BeerController {
      * relacionados à descrição da cerveja, categoria e quantidade em estoque.
      *
      * @param categoryId ID da categoria para filtro (opcional).
-     * @param categoryDescription Descrição da categoria (filtro por nome parcial, opcional).
+     * @param categoryName Descrição da categoria (filtro por nome parcial, opcional).
      * @param beerDescription Descrição da cerveja (filtro por nome parcial, opcional).
      * @param minQuantity Quantidade mínima em estoque (opcional).
      * @param maxQuantity Quantidade máxima em estoque (opcional).
@@ -78,7 +78,7 @@ public class BeerController {
     @GetMapping
     public ResponseEntity<Page<BeerStockDTO>> findAllBeer(
             @Parameter(description = "Category ID to filter", example = "1") @RequestParam(required = false) Long categoryId,
-            @Parameter(description = "Category description filter", example = "Lager") @RequestParam(defaultValue = "") String categoryDescription,
+            @Parameter(description = "Category description filter", example = "Lager") @RequestParam(defaultValue = "") String categoryName,
             @Parameter(description = "Beer description filter", example = "Pale Ale") @RequestParam(defaultValue = "") String beerDescription,
             @Parameter(description = "Minimum quantity filter", example = "10") @RequestParam(required = false) Integer minQuantity,
             @Parameter(description = "Maximum quantity filter", example = "50") @RequestParam(required = false) Integer maxQuantity,
@@ -88,7 +88,7 @@ public class BeerController {
         logger.info("GET /beers iniciado. Filtros: CatID={}, Desc='{}', Page={}", categoryId, beerDescription, page);
 
         PageRequest pageable = PageRequest.of(page, size);
-        Page<BeerStockDTO> result = stockService.findAllBeer(categoryId, categoryDescription, beerDescription, minQuantity, maxQuantity, pageable);
+        Page<BeerStockDTO> result = stockService.findAllBeer(categoryId, categoryName, beerDescription, minQuantity, maxQuantity, pageable);
 
         logger.info("GET /beers finalizado. Total de itens: {}", result.getTotalElements());
         return ResponseEntity.ok(result);

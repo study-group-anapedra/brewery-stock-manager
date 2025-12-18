@@ -29,7 +29,7 @@ public interface StockService {
      * e faixa de quantidade em estoque.</p>
      *
      * @param categoryId ID da categoria (opcional).
-     * @param categoryDescription Descrição da categoria (opcional, busca parcial).
+     * @param categoryName Descrição da categoria (opcional, busca parcial).
      * @param beerDescription Nome/descrição da cerveja (opcional, busca parcial).
      * @param minQuantity Quantidade mínima em estoque (opcional).
      * @param maxQuantity Quantidade máxima em estoque (opcional).
@@ -38,7 +38,7 @@ public interface StockService {
      */
     Page<BeerStockDTO> findAllBeer(
         Long categoryId,
-        String categoryDescription,
+        String categoryName,
         String beerDescription,
         Integer minQuantity,
         Integer maxQuantity,

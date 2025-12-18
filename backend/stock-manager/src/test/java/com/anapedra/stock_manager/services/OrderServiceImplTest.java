@@ -9,13 +9,10 @@ import com.anapedra.stock_manager.repositories.BeerRepository;
 import com.anapedra.stock_manager.repositories.OrderItemRepository;
 import com.anapedra.stock_manager.repositories.OrderRepository;
 import com.anapedra.stock_manager.repositories.UserRepository;
-import com.anapedra.stock_manager.services.AuthService;
-import com.anapedra.stock_manager.services.UserService;
 import com.anapedra.stock_manager.services.exceptions.ForbiddenException;
 import com.anapedra.stock_manager.services.exceptions.ResourceNotFoundException;
 import com.anapedra.stock_manager.services.impl.OrderServiceImpl;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry; // Importação CRÍTICA
-import io.micrometer.core.instrument.MeterRegistry; // Importação da interface
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +30,7 @@ class OrderServiceImplTest {
     private BeerRepository beerRepository;
     private UserRepository userRepository;
     private OrderItemRepository orderItemRepository;
-    private SimpleMeterRegistry meterRegistry; // **CORREÇÃO**: Usando implementação real para teste
+    private SimpleMeterRegistry meterRegistry;
 
     private OrderServiceImpl service;
 
@@ -50,7 +47,7 @@ class OrderServiceImplTest {
         beerRepository = mock(BeerRepository.class);
         userRepository = mock(UserRepository.class);
         orderItemRepository = mock(OrderItemRepository.class);
-        
+
         // **CORREÇÃO CRÍTICA**: Inicializa o MeterRegistry com uma implementação real e simples.
         // Isso resolve a NullPointerException no construtor.
         meterRegistry = new SimpleMeterRegistry(); 
@@ -61,6 +58,7 @@ class OrderServiceImplTest {
                 authService, userService, orderRepository,
                 beerRepository, userRepository, orderItemRepository,
                 meterRegistry
+
         );
 
         user = new User();

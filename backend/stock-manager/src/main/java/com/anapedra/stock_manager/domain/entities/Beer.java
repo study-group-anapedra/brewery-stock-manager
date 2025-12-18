@@ -302,6 +302,8 @@ public class Beer {
         this.registrationMoment = registrationMoment;
     }
 
+
+
     /**
      * Retorna o momento da última atualização do registro da cerveja.
      * @return O momento da atualização.

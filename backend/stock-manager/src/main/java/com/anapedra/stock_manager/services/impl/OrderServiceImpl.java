@@ -256,62 +256,80 @@ public class OrderServiceImpl implements OrderService {
         });
     }
 
-
     /**
-     * Copia os dados do DTO para a entidade {@link Order}, realiza a validação
-     * de estoque e efetua o débito das quantidades em estoque (side-effect).
+     * Copia os dados de um {@link OrderDTO} para a entidade {@link Order}, realizando validações de
+     * integridade, segurança e regras de negócio.
+     * * <p>O método executa as seguintes etapas críticas:</p>
+     * <ul>
+     * <li>Define o momento do pedido e o status inicial.</li>
+     * <li>Realiza o <b>Self-enrollment</b>, associando o pedido ao usuário autenticado no sistema.</li>
+     * <li>Em caso de atualização (ID presente), limpa os itens antigos para substituição.</li>
+     * <li>Valida a existência de cada cerveja (Beer) no banco de dados.</li>
+     * <li><b>Validação de Estoque:</b> Verifica se há saldo suficiente para cada item. Caso o pedido
+     * exceda o estoque disponível, interrompe o processo.</li>
+     * </ul>
      *
-     * @param dto O DTO de origem.
-     * @param entity A entidade {@link Order} de destino (pode ser nova ou existente).
-     * @throws ResourceNotFoundException Se alguma cerveja referenciada não for encontrada.
-     * @throws InsufficientStockException Se o estoque for insuficiente.
+     * @param dto O Objeto de Transferência de Dados (DTO) contendo as informações do pedido.
+     * @param entity A entidade {@link Order} de destino que será persistida ou atualizada.
+     * @throws ForbiddenException Se não houver um usuário autenticado na sessão.
+     * @throws ResourceNotFoundException Se o ID de uma cerveja fornecido no DTO não existir no banco.
+     * @throws InsufficientStockException Se a quantidade solicitada de uma cerveja for maior que o saldo em estoque.
+     * @throws IllegalArgumentException Se o ID da cerveja for nulo em algum item do pedido.
      */
-    private void copyDtoToEntity(OrderDTO dto, Order entity) {
 
+    private void copyDtoToEntity(OrderDTO dto, Order entity) {
         logger.debug("SERVICE: Iniciando mapeamento e validação de estoque para o pedido.");
 
-        // Define o momento de criação/atualização
         entity.setMomentAt(Instant.now());
         entity.setOrderStatus(dto.getOrderStatus());
 
-        // Associa o cliente autenticado (Self-enrollment)
         User authenticatedUser = authService.authenticatedUser();
         if (authenticatedUser == null) {
             logger.error("SERVICE ERROR: Usuário autenticado não encontrado.");
             throw new ForbiddenException("Authenticated user not found or not logged in.");
         }
         entity.setClient(authenticatedUser);
-        logger.debug("SERVICE: Pedido associado ao cliente ID: {}", authenticatedUser.getId());
 
-
-        // Se for uma atualização, limpa os itens antigos (e reverte o estoque - lógica ausente no código)
         if (entity.getId() != null) {
-            logger.debug("SERVICE: Excluindo itens antigos do pedido ID {}.", entity.getId());
-            // Nota: Se for update, a lógica de reverter o estoque dos itens antigos DEVE ser implementada aqui
             orderItemRepository.deleteAll(entity.getItems());
             entity.getItems().clear();
         }
 
-        // Mapeia os novos itens de pedido
         entity.setItems(
                 dto.getItems().stream()
                         .filter(java.util.Objects::nonNull)
                         .map(itemDTO -> {
                             if (itemDTO.getBeerId() == null) {
                                 logger.error("SERVICE ERROR: Beer ID nulo em item do pedido.");
-                                throw new IllegalArgumentException("Beer ID must not be null for an order item.");
+                                throw new IllegalArgumentException("Beer ID must not be null.");
                             }
 
-                            // Busca a cerveja e verifica se existe
                             Beer beer = beerRepository.findById(itemDTO.getBeerId())
-                                    .orElseThrow(() -> {
-                                        logger.warn("SERVICE WARN: Cerveja não encontrada ID: {} para item do pedido.", itemDTO.getBeerId());
-                                        return new ResourceNotFoundException("Beer not found: " + itemDTO.getBeerId());
-                                    });
+                                    .orElseThrow(() -> new ResourceNotFoundException("Beer not found: " + itemDTO.getBeerId()));
+
+                            // Validação de estoque (Regra de Negócio no Service)
+                            int estoqueAtual = beer.getStock().getQuantity();
+
+                            if (itemDTO.getQuantity() > estoqueAtual) {
+                                logger.warn("SERVICE WARN: Estoque insuficiente para Cerveja ID: {}. Pedido: {}, Disponível: {}",
+                                        beer.getId(), itemDTO.getQuantity(), estoqueAtual);
+
+                                throw new InsufficientStockException(
+                                        "Quantidade insuficiente em estoque para a cerveja: " + beer.getName() +
+                                                ". Solicitado: " + itemDTO.getQuantity() +
+                                                ", Disponível em estoque: " + estoqueAtual
+                                );
+                            }
+
                             logger.debug("SERVICE: Mapeando item para cerveja ID {} com quantidade {}.", beer.getId(), itemDTO.getQuantity());
 
-                            // Cria o item de pedido com a entidade Order (para a chave composta OrderItemPK)
-                            return new OrderItem(entity, beer, itemDTO.getQuantity());
+                            // Criação da entidade OrderItem
+                            OrderItem item = new OrderItem(entity, beer, itemDTO.getQuantity());
+
+                            // EXECUÇÃO DA ATUALIZAÇÃO: A entidade altera seu próprio estado (Inversão de Controle)
+                            item.setAtualStock();
+
+                            return item;
                         })
                         .collect(Collectors.toSet())
         );

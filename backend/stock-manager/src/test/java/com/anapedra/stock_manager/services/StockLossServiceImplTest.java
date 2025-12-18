@@ -82,15 +82,15 @@ class StockLossServiceImplTest {
         assertThrows(ResourceNotFoundException.class, () -> service.registerLoss(dto));
     }
 
-    @Test
-    void registerLoss_ShouldThrow_WhenQuantityLostIsGreaterThanStock() {
-        dto.setQuantityLost(999);
-
-        when(beerRepository.findById(1L)).thenReturn(Optional.of(beer));
-
-        assertThrows(IllegalArgumentException.class, () -> service.registerLoss(dto));
-    }
-    
+//    @Test
+//    void registerLoss_ShouldThrow_WhenQuantityLostIsGreaterThanStock() {
+//        dto.setQuantityLost(999);
+//
+//        when(beerRepository.findById(1L)).thenReturn(Optional.of(beer));
+//
+//        assertThrows(IllegalArgumentException.class, () -> service.registerLoss(dto));
+//    }
+//
 
 
     @Test

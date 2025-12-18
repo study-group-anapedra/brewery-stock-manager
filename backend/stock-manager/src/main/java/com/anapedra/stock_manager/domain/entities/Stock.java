@@ -287,4 +287,10 @@ public String toString() {
             ", lastUpdate=" + lastUpdate +
             '}';
 }
+
+
+
+    public void subtractQuantity(int amount) {
+        this.quantity -= amount;
+    }
 }

@@ -25,6 +25,11 @@ public class BeerStockDTO implements Serializable {
     /**
      * O nome da cerveja.
      */
+    private String beerName;
+
+    /**
+     * O nome da categoria.
+     */
     private String name;
 
     /**
@@ -33,9 +38,14 @@ public class BeerStockDTO implements Serializable {
     private Integer stock;
 
     /**
+     * A imagem do produto.
+     */
+    private String imgUrl;
+
+    /**
      * A data de validade (expiração) da cerveja.
      */
-    private LocalDate expirationDate; // <--- NOVO CAMPO DE DATA DE VENCIMENTO
+   // private LocalDate expirationDate; // <--- NOVO CAMPO DE DATA DE VENCIMENTO depende de implementação de lote
 
     /**
      * Construtor padrão sem argumentos.
@@ -51,10 +61,8 @@ public class BeerStockDTO implements Serializable {
     public BeerStockDTO(Beer entity) {
         id = entity.getId();
         name = entity.getName();
-        // Lógica de estoque: Tenta pegar do Stock, se nulo, usa o método de fallback da Beer.
         stock =(entity.getStock() != null) ? entity.getStock().getQuantity() : entity.returnQuantityStock();
-        // Mapeamento do novo campo
-        expirationDate = entity.getExpirationDate();
+        imgUrl = entity.getUrlImg();
     }
 
     /**
@@ -76,9 +84,10 @@ public class BeerStockDTO implements Serializable {
     public Integer getStock() { return stock; }
 
     /**
-     * Retorna a data de validade da cerveja.
-     * @return A data de validade.
+     * Retorna a imagem  da cerveja.
+     * @return A imagem da cerveja.
      */
-    // NOVO GETTER
-    public LocalDate getExpirationDate() { return expirationDate; }
+    public String getImgUrl() {
+        return imgUrl;
+    }
 }

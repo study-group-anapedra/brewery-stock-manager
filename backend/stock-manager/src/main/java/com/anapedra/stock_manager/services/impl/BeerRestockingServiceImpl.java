@@ -108,16 +108,12 @@ public class BeerRestockingServiceImpl implements BeerRestockingService {
             BeerRestocking entity = new BeerRestocking();
             copyDtoToEntity(dto, entity);
 
-            // Lógica de atualização de estoque
             Beer beer = entity.getBeer();
             if (beer.getStock() != null) {
-                 // Adiciona a quantidade reposta ao estoque existente
                 beer.getStock().setQuantity(beer.getStock().getQuantity() + entity.getQuantity());
                 logger.info("SERVICE: Estoque da cerveja ID {} atualizado. Nova quantidade: {}", beer.getId(), beer.getStock().getQuantity());
             } else {
-                // Caso de estoque nulo (deve ser tratado na entidade/banco, mas garantindo segurança aqui)
                 logger.warn("SERVICE WARNING: Cerveja ID {} sem registro de Stock. Inicializando com quantidade reposta.", beer.getId());
-                // Poderia ser: beer.getStock().setQuantity(entity.getQuantity()); se Stock for criado lazy ou se Stock for NonNull
             }
 
             entity.setMoment(Instant.now());

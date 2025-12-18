@@ -1,6 +1,8 @@
 package com.anapedra.stock_manager.domain.entities;
 
+import com.anapedra.stock_manager.domain.enums.StockStatus;
 import com.anapedra.stock_manager.domain.pks.OrderItemPK;
+import com.anapedra.stock_manager.services.exceptions.InsufficientStockException;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -86,33 +88,14 @@ public class OrderItem implements Serializable {
      * @return O subtotal.
      */
     public double getSubTotal(){
-       // Está usando getBeer().getPrice(), o que implica que o preço é dinâmico,
-       // mas o campo 'price' existe. Mantenho a lógica original.
        return quantity * getBeer().getPrice();
     }
 
-
-    /**
-     * Diminui a quantidade no estoque da cerveja associada.
-     *
-     * @param quantity A quantidade a ser diminuída do estoque.
-     * @throws IllegalArgumentException Se a quantidade for menor ou igual a zero.
-     * @throws IllegalStateException Se o estoque for insuficiente.
-     */
-    public void decreaseStock(int quantity) {
-        if (quantity <= 0) {
-            throw  new IllegalArgumentException("Quantity must be greater than zero");
-        }
-        Stock stock = getBeer().getStock();
-
-        Integer newQuantity = stock.getQuantity() - quantity;
-
-        if (newQuantity < 0) {
-            throw new IllegalStateException("Insufficient stock for Beer: " + getBeer().getName());
-        }
-        stock.setQuantity(newQuantity);
-
+    public void setAtualStock() {
+        getBeer().getStock().subtractQuantity(this.quantity);
     }
+
+
 
 
 
@@ -209,8 +192,6 @@ public class OrderItem implements Serializable {
     public int hashCode() {
        return Objects.hash(id);
     }
-
-
 
 
 

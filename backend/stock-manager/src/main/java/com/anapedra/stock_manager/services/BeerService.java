@@ -25,7 +25,7 @@ public interface BeerService {
      * Busca cervejas paginadas aplicando filtros dinâmicos.
      *
      * @param categoryId ID da categoria (opcional).
-     * @param categoryDescription Descrição da categoria (opcional, busca parcial).
+     * @param categoryName Descrição da categoria (opcional, busca parcial).
      * @param beerDescription Nome/descrição da cerveja (opcional, busca parcial).
      * @param minQuantity Quantidade mínima em estoque (opcional).
      * @param maxQuantity Quantidade máxima em estoque (opcional).
@@ -34,7 +34,7 @@ public interface BeerService {
      */
     Page<BeerFilterDTO> findAllBeer(
             Long categoryId,
-            String categoryDescription,
+            String categoryName,
             String beerDescription,
             Integer minQuantity,
             Integer maxQuantity,

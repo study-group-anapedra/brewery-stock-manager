@@ -52,7 +52,7 @@ public class StockController {
      * aplicando filtros opcionais.
      *
      * @param categoryId ID da categoria da cerveja (opcional).
-     * @param categoryDescription Descrição da categoria (filtro por nome parcial, opcional).
+     * @param categoryName Descrição da categoria (filtro por nome parcial, opcional).
      * @param beerDescription Descrição da cerveja (filtro por nome parcial, opcional).
      * @param minQuantity Quantidade mínima em estoque para filtro (opcional).
      * @param maxQuantity Quantidade máxima em estoque para filtro (opcional).
@@ -63,7 +63,7 @@ public class StockController {
     public ResponseEntity<Page<BeerStockDTO>> findAll(
 
             @RequestParam(value = "categoryId", required = false) Long categoryId,
-            @RequestParam(value = "categoryDescription", defaultValue = "") String categoryDescription,
+            @RequestParam(value = "categoryName", defaultValue = "") String categoryName,
             @RequestParam(value = "beerDescription", defaultValue = "") String beerDescription,
             @RequestParam(value = "minQuantity", required = false) Integer minQuantity,
             @RequestParam(value = "maxQuantity", required = false) Integer maxQuantity,
@@ -74,7 +74,7 @@ public class StockController {
                     
         Page<BeerStockDTO> list = stockService.findAllBeer(
             categoryId,
-            categoryDescription.trim(), 
+                categoryName.trim(),
             beerDescription.trim(), 
             minQuantity,
             maxQuantity,

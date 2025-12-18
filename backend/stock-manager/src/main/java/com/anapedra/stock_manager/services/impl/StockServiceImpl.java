@@ -51,7 +51,7 @@ public class StockServiceImpl implements StockService {
      * Busca cervejas com informações de estoque paginadas aplicando filtros dinâmicos.
      *
      * @param categoryId ID da categoria (opcional).
-     * @param categoryDescription Descrição da categoria (opcional, busca parcial).
+     * @param categoryName Descrição da categoria (opcional, busca parcial).
      * @param beerDescription Nome/descrição da cerveja (opcional, busca parcial).
      * @param minQuantity Quantidade mínima em estoque (opcional).
      * @param maxQuantity Quantidade máxima em estoque (opcional).
@@ -62,7 +62,7 @@ public class StockServiceImpl implements StockService {
     @Override
     public Page<BeerStockDTO> findAllBeer(
             Long categoryId,
-            String categoryDescription,
+            String categoryName,
             String beerDescription,
             Integer minQuantity,
             Integer maxQuantity,
@@ -71,8 +71,8 @@ public class StockServiceImpl implements StockService {
         logger.info("SERVICE: Buscando estoque com filtros - CatID: {}, Quantidade Min: {}. Página: {}", 
                     categoryId, minQuantity, pageable.getPageNumber());
 
-        String categorySearch = (categoryDescription != null && !categoryDescription.isBlank())
-                ? categoryDescription.trim()
+        String categorySearch = (categoryName != null && !categoryName.isBlank())
+                ? categoryName.trim()
                 : null;
 
         String beerSearch = (beerDescription != null && !beerDescription.isBlank())

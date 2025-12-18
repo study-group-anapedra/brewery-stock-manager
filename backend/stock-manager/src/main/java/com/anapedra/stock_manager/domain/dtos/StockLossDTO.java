@@ -43,10 +43,6 @@ public class StockLossDTO implements Serializable {
      */
     private Integer quantityLost;
 
-    /**
-     * Campo herdado do campo 'description' da entidade StockLoss, usado para retrocompatibilidade ou descrição do motivo.
-     */
-    private String reasonDescription;
 
     /**
      * O motivo classificado da perda (Enum {@link LossReason}).
@@ -78,14 +74,13 @@ public class StockLossDTO implements Serializable {
     /**
      * Construtor para inicializar todos os campos.
      */
-    public StockLossDTO(Long id, Long beerId,Integer quantityLost,String reasonDescription, LossReason reason, LocalDate lossDate, Instant registrationMoment, String description) {
+    public StockLossDTO(Long id, Long beerId,Integer quantityLost,LocalDate lossDate ,LossReason reason, String description) {
         this.id = id;
         this.beerId = beerId;
         this.quantityLost = quantityLost;
-        this.reasonDescription = reasonDescription;
         this.reason = reason;
         this.lossDate = lossDate;
-        this.registrationMoment = registrationMoment;
+        this.registrationMoment = Instant.now();
         this.description = description;
     }
 
@@ -96,19 +91,12 @@ public class StockLossDTO implements Serializable {
      */
     public StockLossDTO(StockLoss entity) {
         id = entity.getId();
-        // Assume que a referência Beer está carregada
         beerId = entity.getBeer().getId();
         beerName = entity.getBeer().getName();
         quantityLost = entity.getQuantityLost();
-
-        // Mapeia o campo 'description' da entidade para ambos os campos do DTO
-        reasonDescription = entity.getDescription();
         description = entity.getDescription();
-
         lossDate = entity.getLossDate();
         registrationMoment = entity.getRegistrationMoment();
-
-        // Mapeia o Enum LossReason, com fallback para OTHER se for nulo
         reason = (entity.getLossReason() != null) ? entity.getLossReason() : LossReason.OTHER;
 
     }
@@ -171,21 +159,7 @@ public class StockLossDTO implements Serializable {
         this.quantityLost = quantityLost;
     }
 
-    /**
-     * Retorna a descrição do motivo (campo antigo/compatibilidade).
-     * @return A descrição do motivo.
-     */
-    public String getReasonDescription() {
-        return reasonDescription;
-    }
 
-    /**
-     * Define a descrição do motivo (campo antigo/compatibilidade).
-     * @param reasonDescription A nova descrição.
-     */
-    public void setReasonDescription(String reasonDescription) {
-        this.reasonDescription = reasonDescription;
-    }
 
     /**
      * Retorna o motivo da perda como Enum.

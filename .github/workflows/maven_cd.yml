@@ -5,8 +5,9 @@ on:
     branches: [ "main" ]
 
 env:
-  # Nome corrigido com base no ID da sua conta AWS que falhou no log anterior
+  # Nome do bucket criado manualmente com o ID da sua conta
   BUCKET_NAME: "stock-manager-prod-artifacts-338395016803"
+  AWS_REGION: "us-east-1"
 
 jobs:
   release-and-deploy:
@@ -28,6 +29,7 @@ jobs:
           cache: 'maven'
 
       - name: Criar Build com Maven (Empacotar)
+        # Ajustado para o diretório onde está o seu pom.xml
         working-directory: backend/stock-manager
         run: mvn -B clean package -DskipTests
 
@@ -36,25 +38,27 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Preparar e Enviar Pacote
-        working-directory: backend/stock-manager
         run: |
-          # 1. Localiza o JAR gerado (Sucesso garantido pelo working-directory)
-          JAR_PATH=$(ls target/stock-manager-*.jar | head -n 1)
+          # 1. Localiza o JAR gerado dentro do diretório do Maven
+          JAR_PATH=$(ls backend/stock-manager/target/stock-manager-*.jar | head -n 1)
           cp $JAR_PATH stock-manager.jar
           
-          # 2. Cria o arquivo ZIP incluindo scripts e appspec
+          # 2. Garante que appspec.yml e scripts existam na raiz antes de zipar
+          # O CodeDeploy exige que o appspec.yml esteja na RAIZ do arquivo .zip
           zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
           
-          # 3. Envia para o S3 (Corrigido para o bucket com o ID 338395016803)
+          # 3. Envia para o S3 (Destino final do artefato de build)
           aws s3 cp deploy-package.zip s3://${{ env.BUCKET_NAME }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS
         run: |
+          # Dispara o deploy usando o Application e Deployment Group criados via terminal
           aws deploy create-deployment \
             --application-name StockManagerApp \
             --deployment-group-name StockManagerDG \
             --s3-location bucket=${{ env.BUCKET_NAME }},key=deploy/stock-manager.zip,bundleType=zip \
+            --region ${{ env.AWS_REGION }} \
             --ignore-application-stop-failures

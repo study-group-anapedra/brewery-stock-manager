@@ -4,9 +4,9 @@ on:
   push:
     branches: [ "main" ]
 
-# Agrupei a configuração do bucket aqui para facilitar a sua edição
 env:
-  BUCKET_NAME: "stock-manager-prod-artifacts-338395016803" # <-- VERIFIQUE ESTE NOME NO SEU CONSOLE AWS S3
+  # Agrupei o nome do bucket aqui. Verifique se o número 338395016803 é o seu ID da AWS
+  BUCKET_NAME: "stock-manager-prod-artifacts-338395016803"
 
 jobs:
   release-and-deploy:
@@ -41,14 +41,14 @@ jobs:
       - name: Preparar e Enviar Pacote
         working-directory: backend/stock-manager
         run: |
-          # 1. Localiza o JAR (Esta parte já está funcionando!)
+          # 1. Localiza o JAR gerado pelo Maven
           JAR_PATH=$(ls target/stock-manager-*.jar | head -n 1)
           cp $JAR_PATH stock-manager.jar
           
-          # 2. Cria o arquivo ZIP (Esta parte também está ok!)
+          # 2. Cria o pacote ZIP para o CodeDeploy
           zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
           
-          # 3. Envia para o S3 usando a variável corrigida
+          # 3. Envia para o S3 (Onde o erro ocorria)
           aws s3 cp deploy-package.zip s3://${{ env.BUCKET_NAME }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS

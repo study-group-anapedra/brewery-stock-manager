@@ -23,10 +23,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Criar Build com Maven
-        run: |
-          cd backend/stock-manager
-          mvn -B clean package -DskipTests
+      - name: Criar Build com Maven (Empacotar)
+        # Define a pasta correta para o Maven trabalhar
+        working-directory: backend/stock-manager
+        run: mvn -B clean package -DskipTests
 
       - name: Configurar Credenciais da AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -36,16 +36,17 @@ jobs:
           aws-region: us-east-1
 
       - name: Preparar e Enviar Pacote
+        # Garante que estamos na pasta onde o JAR foi criado
+        working-directory: backend/stock-manager
         run: |
-          cd backend/stock-manager
-          # Organiza o arquivo JAR
-          cp target/stock-manager-*.jar stock-manager.jar
+          # 1. Localiza o JAR e copia para a raiz da pasta do projeto
+          JAR_PATH=$(ls target/stock-manager-*.jar | head -n 1)
+          cp $JAR_PATH stock-manager.jar
           
-          # Cria a "Mala" (ZIP) com tudo o que a AWS precisa
+          # 2. Cria o arquivo ZIP com o JAR, o manual (appspec) e os scripts
           zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
           
-          # Envia para o S3 (O "Armário")
-          # Usei o nome padrão que sua infraestrutura cria
+          # 3. Envia para o S3 da AWS
           aws s3 cp deploy-package.zip s3://stock-manager-prod-artifacts-338395016803/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS

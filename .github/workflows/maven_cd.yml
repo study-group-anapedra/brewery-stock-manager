@@ -4,6 +4,10 @@ on:
   push:
     branches: [ "main" ]
 
+# Agrupei a configuração do bucket aqui para facilitar a sua edição
+env:
+  BUCKET_NAME: "stock-manager-prod-artifacts-338395016803" # <-- VERIFIQUE ESTE NOME NO SEU CONSOLE AWS S3
+
 jobs:
   release-and-deploy:
     runs-on: ubuntu-latest
@@ -24,7 +28,6 @@ jobs:
           cache: 'maven'
 
       - name: Criar Build com Maven (Empacotar)
-        # Define a pasta correta para o Maven trabalhar
         working-directory: backend/stock-manager
         run: mvn -B clean package -DskipTests
 
@@ -36,23 +39,22 @@ jobs:
           aws-region: us-east-1
 
       - name: Preparar e Enviar Pacote
-        # Garante que estamos na pasta onde o JAR foi criado
         working-directory: backend/stock-manager
         run: |
-          # 1. Localiza o JAR e copia para a raiz da pasta do projeto
+          # 1. Localiza o JAR (Esta parte já está funcionando!)
           JAR_PATH=$(ls target/stock-manager-*.jar | head -n 1)
           cp $JAR_PATH stock-manager.jar
           
-          # 2. Cria o arquivo ZIP com o JAR, o manual (appspec) e os scripts
+          # 2. Cria o arquivo ZIP (Esta parte também está ok!)
           zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
           
-          # 3. Envia para o S3 da AWS
-          aws s3 cp deploy-package.zip s3://stock-manager-prod-artifacts-338395016803/deploy/stock-manager.zip
+          # 3. Envia para o S3 usando a variável corrigida
+          aws s3 cp deploy-package.zip s3://${{ env.BUCKET_NAME }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS
         run: |
           aws deploy create-deployment \
             --application-name StockManagerApp \
             --deployment-group-name StockManagerDG \
-            --s3-location bucket=stock-manager-prod-artifacts-338395016803,key=deploy/stock-manager.zip,bundleType=zip \
+            --s3-location bucket=${{ env.BUCKET_NAME }},key=deploy/stock-manager.zip,bundleType=zip \
             --ignore-application-stop-failures

@@ -5,8 +5,8 @@ on:
     branches: [ "main" ]
 
 env:
-  # ATENÇÃO: Verifique no console S3 se o nome termina com o ID ou se é apenas este:
-  BUCKET_NAME: "stock-manager-prod-artifacts"
+  # Nome corrigido com base no ID da sua conta AWS que falhou no log anterior
+  BUCKET_NAME: "stock-manager-prod-artifacts-338395016803"
 
 jobs:
   release-and-deploy:
@@ -41,14 +41,14 @@ jobs:
       - name: Preparar e Enviar Pacote
         working-directory: backend/stock-manager
         run: |
-          # Localiza o JAR e organiza os arquivos
+          # 1. Localiza o JAR gerado (Sucesso garantido pelo working-directory)
           JAR_PATH=$(ls target/stock-manager-*.jar | head -n 1)
           cp $JAR_PATH stock-manager.jar
           
-          # Cria o pacote para o CodeDeploy
+          # 2. Cria o arquivo ZIP incluindo scripts e appspec
           zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
           
-          # Envia para o S3
+          # 3. Envia para o S3 (Corrigido para o bucket com o ID 338395016803)
           aws s3 cp deploy-package.zip s3://${{ env.BUCKET_NAME }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS

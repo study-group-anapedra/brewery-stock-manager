@@ -5,14 +5,12 @@ on:
     branches: [ "main" ]
 
 env:
-  # Nome do bucket criado manualmente com o ID da sua conta
-  BUCKET_NAME: "stock-manager-prod-artifacts-338395016803"
-  AWS_REGION: "us-east-1"
+  # Usando a variável que você criou no GitHub
+  S3_BUCKET: ${{ vars.S3_BUCKET }}
 
 jobs:
   release-and-deploy:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       id-token: write
@@ -28,37 +26,44 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Criar Build com Maven (Empacotar)
-        # Ajustado para o diretório onde está o seu pom.xml
-        working-directory: backend/stock-manager
-        run: mvn -B clean package -DskipTests
-
-      - name: Configurar Credenciais da AWS
+      - name: Configurar Credenciais da AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          # Referência ao segredo que você já possui
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+
+      - name: Criar Build com Maven
+        run: |
+          cd backend/stock-manager
+          mvn -B clean package -DskipTests
 
       - name: Preparar e Enviar Pacote
         run: |
-          # 1. Localiza o JAR gerado dentro do diretório do Maven
-          JAR_PATH=$(ls backend/stock-manager/target/stock-manager-*.jar | head -n 1)
-          cp $JAR_PATH stock-manager.jar
+          # 1. Localiza o JAR (ex: stock-manager-0.0.1-SNAPSHOT.jar)
+          JAR_ORIGEM=$(find backend/stock-manager/target -name "stock-manager-*.jar" | head -n 1)
           
-          # 2. Garante que appspec.yml e scripts existam na raiz antes de zipar
-          # O CodeDeploy exige que o appspec.yml esteja na RAIZ do arquivo .zip
-          zip -r deploy-package.zip stock-manager.jar appspec.yml scripts/
+          # 2. Cria estrutura limpa para o CodeDeploy
+          mkdir -p deploy_temp/scripts
           
-          # 3. Envia para o S3 (Destino final do artefato de build)
-          aws s3 cp deploy-package.zip s3://${{ env.BUCKET_NAME }}/deploy/stock-manager.zip
+          # 3. Copia arquivos (appspec.yml deve ficar na raiz do ZIP)
+          cp $JAR_ORIGEM deploy_temp/stock-manager.jar
+          cp appspec.yml deploy_temp/
+          cp -r scripts/* deploy_temp/scripts/
+          
+          # 4. Gera o ZIP sem pastas intermediárias
+          cd deploy_temp
+          zip -r ../deploy-package.zip .
+          cd ..
+          
+          # 5. Upload para o S3
+          aws s3 cp deploy-package.zip s3://${{ env.S3_BUCKET }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS
         run: |
-          # Dispara o deploy usando o Application e Deployment Group criados via terminal
+          # Aciona o CodeDeploy usando os nomes de segredos que você cadastrou
           aws deploy create-deployment \
             --application-name StockManagerApp \
             --deployment-group-name StockManagerDG \
-            --s3-location bucket=${{ env.BUCKET_NAME }},key=deploy/stock-manager.zip,bundleType=zip \
-            --region ${{ env.AWS_REGION }} \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip \
             --ignore-application-stop-failures

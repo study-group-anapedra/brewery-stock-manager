@@ -5,7 +5,7 @@ O projeto simula um **ambiente corporativo real**, contemplando documentação t
 
 ---
 
-## 📦 Visão Geral do Projeto
+## Visão Geral do Projeto
 
 O **Beer Brewery Stock Manager** é um sistema **backend** responsável pelo controle e gerenciamento de estoque de cervejas, utilizando recursos como rastreamento em tempo real, alertas de validade, sugestões de reposição e análise inteligente da demanda de produtos.
 

@@ -5,7 +5,6 @@ on:
     branches: [ "main" ]
 
 env:
-  # Usando a variável que você criou no GitHub
   S3_BUCKET: ${{ vars.S3_BUCKET }}
 
 jobs:
@@ -29,7 +28,6 @@ jobs:
       - name: Configurar Credenciais da AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # Referência ao segredo que você já possui
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: us-east-1
 
@@ -40,19 +38,24 @@ jobs:
 
       - name: Preparar e Enviar Pacote
         run: |
-          # 1. Localiza o JAR (ex: stock-manager-0.0.1-SNAPSHOT.jar)
-          JAR_ORIGEM=$(find backend/stock-manager/target -name "stock-manager-*.jar" | head -n 1)
+          # Caminhos base
+          PROJECT_DIR=backend/stock-manager
+          DEPLOY_TEMP=deploy_temp
+          
+          # 1. Localiza o JAR
+          JAR_ORIGEM=$(find $PROJECT_DIR/target -name "stock-manager-*.jar" | head -n 1)
           
           # 2. Cria estrutura limpa para o CodeDeploy
-          mkdir -p deploy_temp/scripts
+          rm -rf $DEPLOY_TEMP
+          mkdir -p $DEPLOY_TEMP/scripts
           
           # 3. Copia arquivos (appspec.yml deve ficar na raiz do ZIP)
-          cp $JAR_ORIGEM deploy_temp/stock-manager.jar
-          cp appspec.yml deploy_temp/
-          cp -r scripts/* deploy_temp/scripts/
+          cp $JAR_ORIGEM $DEPLOY_TEMP/stock-manager.jar
+          cp $PROJECT_DIR/appspec.yml $DEPLOY_TEMP/
+          cp -r $PROJECT_DIR/scripts/* $DEPLOY_TEMP/scripts/
           
           # 4. Gera o ZIP sem pastas intermediárias
-          cd deploy_temp
+          cd $DEPLOY_TEMP
           zip -r ../deploy-package.zip .
           cd ..
           
@@ -61,7 +64,6 @@ jobs:
 
       - name: Executar Deploy na AWS
         run: |
-          # Aciona o CodeDeploy usando os nomes de segredos que você cadastrou
           aws deploy create-deployment \
             --application-name StockManagerApp \
             --deployment-group-name StockManagerDG \

@@ -21,7 +21,7 @@ spring:
   # --- Cache e Sessão (ElastiCache Redis) ---
   data:
     redis:
-      host: ${REDIS_HOST}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       connect-timeout: 2000
       timeout: 1000
@@ -31,7 +31,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
     hibernate:
-      ddl-auto: validate # Seguro para produção
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: false
@@ -45,10 +45,9 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: true
 
-# --- Configurações do Servidor (Tomcat) ---
+# --- Configurações do Servidor ---
 server:
   port: 8080
-  # Essencial para que o Spring reconheça o HTTPS do CloudFront/ALB
   forward-headers-strategy: framework
   tomcat:
     remoteip:
@@ -67,9 +66,9 @@ management:
         enabled: true
       show-details: when_authorized
 
-# --- Logs de Produção ---
+# --- Logs ---
 logging:
   level:
     root: INFO
     org.springframework.web: INFO
-    org.hibernate.SQL: ERROR # Protege dados sensíveis
+    org.hibernate.SQL: ERROR

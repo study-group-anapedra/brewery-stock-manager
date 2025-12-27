@@ -1,23 +1,34 @@
 #!/bin/bash
-cd /home/ec2-user/app
+#!/bin/bash
+set -e
 
-# 1. Buscar o Endpoint do Banco de Dados via CLI da AWS
-# Isso evita que você tenha que digitar o endereço manualmente
-DB_URL=$(aws cloudformation describe-stacks \
+APP_DIR=/home/ec2-user/app
+LOG_FILE=$APP_DIR/log.txt
+
+cd $APP_DIR
+
+echo "Buscando endpoint do banco via CloudFormation..."
+
+# Buscar o endpoint do RDS a partir do stack de infra
+DB_ENDPOINT=$(aws cloudformation describe-stacks \
   --stack-name stock-manager-master-dev \
   --query "Stacks[0].Outputs[?OutputKey=='DBEndpoint'].OutputValue" \
   --output text)
 
-# 2. As credenciais nós passamos via ambiente ou segredos do CodeDeploy
-# Para este teste, vamos usar as que você definiu na infra de Prod
-DB_USERNAME="admin"
-DB_PASSWORD="StockManagerProd2025"
+if [ -z "$DB_ENDPOINT" ]; then
+  echo "Erro: DBEndpoint não encontrado no CloudFormation"
+  exit 1
+fi
 
-echo "Iniciando aplicação conectando em: $DB_URL"
+# Variáveis esperadas pelo application-prod.yml
+export DB_HOST="$DB_ENDPOINT"
+export DB_NAME="stockmanager"        # ajuste se o nome do banco for outro
+export DB_USERNAME="admin"
+export DB_PASSWORD="StockManagerProd2025"
 
-# 3. Comando Java com as variáveis injetadas
+echo "Iniciando aplicação conectando em: $DB_HOST"
+
 nohup java -Dspring.profiles.active=prod \
-           -DDB_URL=$DB_URL \
-           -DDB_USERNAME=$DB_USERNAME \
-           -DDB_PASSWORD=$DB_PASSWORD \
-           -jar stock-manager.jar > log.txt 2>&1 &
+           -jar stock-manager.jar > "$LOG_FILE" 2>&1 &
+
+echo "Aplicação iniciada com sucesso."

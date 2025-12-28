@@ -1,7 +1,14 @@
 #!/bin/bash
-# 1. Tenta encerrar o processo do Java que está rodando o seu JAR
-# O '|| true' garante que o script não dê erro se o app já estiver parado
-pkill -f 'stock-manager.jar' || true
+set +e
 
-# 2. Pequena pausa para garantir que a porta 8080 seja liberada pelo SO
+APP_NAME="stock-manager.jar"
+
+echo "Parando aplicação se estiver rodando..."
+
+# Encerra qualquer processo Java rodando o JAR
+pkill -f "$APP_NAME" || true
+
+# Aguarda liberação de recursos (porta, memória)
 sleep 5
+
+echo "Aplicação parada (ou já estava parada)."

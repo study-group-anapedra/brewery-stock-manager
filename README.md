@@ -97,6 +97,31 @@ Atualmente, o projeto encontra-se na fase de **implementação e consolidação 
   </a>
 </p>
 
+<p>
+  <a href="https://drive.google.com/file/d/113OlPPpeHbUoUBxvqbWhjfS1xuhTMrjM/view?usp=sharing">
+    🔗 Custo da AWS
+  </a>
+</p>
+
+<p>
+  <a href="">
+    🔗 Deploys da aplicação e da infra via ClaudFormetin 
+  </a>
+</p>
+
+<p>
+  <a href="">
+    🔗 Repositorio da infra como códigio/ClaudFront
+  </a>
+</p>
+
+<p>
+  <a href="">
+    🔗 Testando em produção via postmen
+  </a>
+</p>
+
+
 
 
 ### 🔮 Evoluções Planejadas

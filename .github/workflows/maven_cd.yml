@@ -66,6 +66,6 @@ jobs:
         run: |
           aws deploy create-deployment \
             --application-name stock-manager-app \
-            --deployment-group-name stock-manager-dg \
+           --deployment-group-name stock-manager-dg-v2 \
             --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip \
             --ignore-application-stop-failures

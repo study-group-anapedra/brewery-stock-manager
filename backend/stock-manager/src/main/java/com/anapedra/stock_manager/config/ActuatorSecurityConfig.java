@@ -44,9 +44,9 @@ public class ActuatorSecurityConfig {
     public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .securityMatcher("/actuator/**") // ⬅️ Restrito SOMENTE ao actuator
+                .securityMatcher("/actuator/**") //  Restrito SOMENTE ao actuator
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll() // ⬅️ libera todos os endpoints actuator
+                        .anyRequest().permitAll() //  libera todos os endpoints actuator
                 )
                 .csrf(csrf -> csrf.disable());
 

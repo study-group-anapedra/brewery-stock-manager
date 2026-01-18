@@ -1,11 +1,25 @@
-server:
-  port: 8080  # Porta interna da aplicação Spring Boot
+version: 0.0
+os: linux
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, prometheus, metrics
-  endpoint:
-    health:
-      show-details: always
+files:
+  - source: /
+    destination: /home/ec2-user/app
+    overwrite: true
+
+hooks:
+  BeforeInstall:
+    - location: scripts/setup_permissions.sh
+      timeout: 300
+      runas: root
+
+  ApplicationStop:
+    - location: scripts/stop_server.sh
+      timeout: 300
+      runas: ec2-user
+
+  ApplicationStart:
+    - location: scripts/start_server.sh
+      timeout: 300
+      runas: ec2-user
+
+

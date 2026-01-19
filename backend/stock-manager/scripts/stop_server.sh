@@ -1,11 +1,13 @@
 #!/bin/bash
 set -e
 
-APP_NAME="app.jar"
+# CORREÇÃO: Nome alinhado com o JAR gerado no GitHub Actions
+APP_NAME="stock-manager.jar"
 
 echo "Parando aplicação..."
 
-# Mata qualquer processo Java rodando com o app.jar
+# CORREÇÃO: Mata o processo pelo nome correto do arquivo
+# O "|| true" evita que o script falhe caso a aplicação não esteja rodando
 pkill -f "$APP_NAME" || true
 
 sleep 5

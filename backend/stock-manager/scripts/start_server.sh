@@ -1,17 +1,25 @@
 #!/bin/bash
 set -e
 
-# CORREÇÃO: Alinhado com o nome gerado no GitHub Actions
-APP_NAME="stock-manager.jar" 
+APP_NAME="stock-manager.jar"
 APP_DIR="/home/ec2-user/app"
 LOG_FILE="/home/ec2-user/stock-manager.log"
 
+# ============================
+# VARIÁVEIS DE BANCO
+# ============================
+export DB_HOST="stock-manager-prod-instance-1.cafmokswu8mk.us-east-1.rds.amazonaws.com"
+export DB_PORT="5432"
+export DB_NAME="stockmanagerprod"
+export DB_USERNAME="dbadmin"
+export DB_PASSWORD="StockManagerProd2025"
+
 cd $APP_DIR
 
-echo "Iniciando aplicação..."
+echo "Iniciando aplicação Stock Manager..."
 
-# CORREÇÃO: Usando o caminho absoluto do Java instalado na infra
 nohup java -Dspring.profiles.active=prod -jar $APP_NAME > $LOG_FILE 2>&1 &
 
 sleep 5
-echo "Aplicação iniciada."
+
+echo "Aplicação iniciada com sucesso."

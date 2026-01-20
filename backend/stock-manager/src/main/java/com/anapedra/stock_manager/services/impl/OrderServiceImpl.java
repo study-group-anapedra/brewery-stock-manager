@@ -62,7 +62,16 @@ public class OrderServiceImpl implements OrderService {
     private final Counter insufficientStockCounter;
 
     /**
-     * Construtor para injeção de dependências e registro de métricas.
+     * Construtor responsável pela injeção de dependências do serviço de pedidos
+     * e pela configuração das métricas de observabilidade via Micrometer.
+     *
+     * @param authService serviço responsável pela autenticação e validação de permissões
+     * @param userService serviço de operações relacionadas ao usuário
+     * @param orderRepository repositório de persistência de pedidos
+     * @param beerRepository repositório de persistência de cervejas
+     * @param userRepository repositório de persistência de usuários
+     * @param orderItemRepository repositório de persistência dos itens do pedido
+     * @param registry registro central de métricas do Micrometer
      */
     public OrderServiceImpl(
             AuthService authService,

@@ -1,14 +1,15 @@
 #!/bin/bash
 set -e
 
-
 APP_NAME="stock-manager.jar"
 
-echo "Parando aplicação..."
+echo "Iniciando processo de parada da aplicação $APP_NAME..."
 
-# O "|| true" evita que o script falhe caso a aplicação não esteja rodando
-pkill -f "$APP_NAME" || true
-
+# Tenta parar gentilmente primeiro
+pkill -15 -f "$APP_NAME" || true
 sleep 5
 
-echo "Aplicação parada (ou já estava parada)."
+# Garante a parada forçada se ainda estiver rodando (evita porta ocupada)
+pkill -9 -f "$APP_NAME" || true
+
+echo "Aplicação parada com sucesso."

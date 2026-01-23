@@ -38,34 +38,28 @@ jobs:
 
       - name: Preparar e Enviar Pacote
         run: |
-          # Caminhos base
           PROJECT_DIR=backend/stock-manager
           DEPLOY_TEMP=deploy_temp
           
-          # 1. Localiza o JAR
           JAR_ORIGEM=$(find $PROJECT_DIR/target -name "stock-manager-*.jar" | head -n 1)
           
-          # 2. Cria estrutura limpa para o CodeDeploy
           rm -rf $DEPLOY_TEMP
           mkdir -p $DEPLOY_TEMP/scripts
           
-          # 3. Copia arquivos (appspec.yml deve ficar na raiz do ZIP)
           cp $JAR_ORIGEM $DEPLOY_TEMP/stock-manager.jar
           cp $PROJECT_DIR/appspec.yml $DEPLOY_TEMP/
           cp -r $PROJECT_DIR/scripts/* $DEPLOY_TEMP/scripts/
           
-          # 4. Gera o ZIP sem pastas intermediárias
           cd $DEPLOY_TEMP
           zip -r ../deploy-package.zip .
           cd ..
           
-          # 5. Upload para o S3
           aws s3 cp deploy-package.zip s3://${{ env.S3_BUCKET }}/deploy/stock-manager.zip
 
       - name: Executar Deploy na AWS
         run: |
           aws deploy create-deployment \
             --application-name stock-manager-app \
-           --deployment-group-name stock-manager-dg-v2 \
+            --deployment-group-name stock-manager-prod-dg \
             --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip \
             --ignore-application-stop-failures

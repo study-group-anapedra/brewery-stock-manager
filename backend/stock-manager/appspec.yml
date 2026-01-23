@@ -2,9 +2,9 @@ version: 0.0
 os: linux
 
 files:
-  - source: /stock-manager.jar
+  - source: stock-manager.jar
     destination: /home/ec2-user/app
-  - source: /scripts
+  - source: scripts
     destination: /home/ec2-user/app/scripts
 
 hooks:
@@ -12,10 +12,12 @@ hooks:
     - location: scripts/stop_server.sh
       timeout: 300
       runas: root
+
   BeforeInstall:
     - location: scripts/setup_permissions.sh
       timeout: 300
       runas: root
+
   ApplicationStart:
     - location: scripts/start_server.sh
       timeout: 300

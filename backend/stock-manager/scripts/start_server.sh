@@ -1,50 +1,43 @@
 #!/bin/bash
-# O comando 'set -e' faz o script parar se qualquer comando falhar
 set -e
 
 APP_NAME="stock-manager.jar"
 APP_DIR="/home/ec2-user/app"
-LOG_FILE="/home/ec2-user/stock-manager.log"
+LOG_FILE="/home/ec2-user/app/stock-manager.log"
 
-# 1. Carrega as variáveis que a infraestrutura injetou (Opcional)
+# 1. Carrega variáveis injetadas pela infra (Obrigatório para o endpoint v2)
 if [ -f /etc/profile.d/app_env.sh ]; then
     source /etc/profile.d/app_env.sh
 fi
 
-# 2. Define as variáveis de conexão (AJUSTADO COM O ENDPOINT REAL)
-# O host abaixo foi validado via CLI na sua infraestrutura
-export DB_HOST="stock-manager-core-prod-rdsstack-1j00oz-dbinstance-80dzmxxcxfk3.cafmokswu8mk.us-east-1.rds.amazonaws.com"
+# 2. Credenciais (Sincronizadas com seu rds.yaml) [cite: 2025-12-23]
 export DB_PORT="5432"
 export DB_NAME="stockmanagerprod"
 export DB_USERNAME="dbadmin"
 export DB_PASSWORD="StockManagerProd2025"
 
-# 3. Monta a URL do JDBC para o Spring Boot
+# 3. Monta a URL JDBC
+# A variável DB_HOST deve ser entregue pelo CloudFormation via UserData na EC2
 export SPRING_DATASOURCE_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
 export SPRING_DATASOURCE_USERNAME="${DB_USERNAME}"
 export SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}"
 
-# Garante que o diretório existe e entra nele
 mkdir -p $APP_DIR
 cd $APP_DIR
 
-echo "Iniciando aplicação Stock Manager no diretório $APP_DIR..."
+echo "Iniciando aplicação com Banco: $DB_HOST"
 
-# 4. Inicia o Java com o perfil de produção e as variáveis injetadas
-# O 'nohup' garante que a app continue rodando após o CodeDeploy terminar
-nohup java -Dspring.profiles.active=prod \
-     -jar $APP_NAME > $LOG_FILE 2>&1 &
+# 4. Execução em background
+nohup java -Dspring.profiles.active=prod -jar $APP_NAME > $LOG_FILE 2>&1 &
 
-# 5. Pequena pausa para o Java tentar subir
-sleep 15
+sleep 25
 
-# Verifica se o processo Java realmente iniciou
+# 5. Validação de inicialização
 if pgrep -f "$APP_NAME" > /dev/null
 then
-    echo "Aplicação iniciada com sucesso (PID: $(pgrep -f $APP_NAME))."
+    echo "Sucesso: Processo Java ativo."
 else
-    echo "Erro: A aplicação falhou ao iniciar. Verifique os logs em $LOG_FILE"
-    # Mostra as últimas linhas do erro no console do CodeDeploy para facilitar
-    tail -n 20 $LOG_FILE
+    echo "Erro: Aplicação falhou ao conectar no banco $DB_HOST"
+    tail -n 50 $LOG_FILE
     exit 1
 fi

@@ -102,3 +102,9 @@ $RECYCLE.BIN/
 *.tmp
 *.swp
 *.swo
+############################################
+###   CODEDEPLOY / PIPELINE TEMP FILES   ###
+############################################
+
+# Pasta temporária usada para montar o pacote do CodeDeploy
+deploy_temp/

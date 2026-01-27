@@ -3,41 +3,48 @@ set -e
 
 APP_NAME="stock-manager.jar"
 APP_DIR="/home/ec2-user/app"
-LOG_FILE="/home/ec2-user/app/stock-manager.log"
+LOG_FILE="$APP_DIR/stock-manager.log"
+ENV_FILE="/etc/profile.d/app_env.sh"
 
-# 1. Carrega variáveis da infra (Essencial para o RDS)
-if [ -f /etc/profile.d/app_env.sh ]; then
-  source /etc/profile.d/app_env.sh
+echo "Iniciando start da aplicação..."
+
+# Verifica se o arquivo de variáveis existe
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERRO: Arquivo de variáveis $ENV_FILE não encontrado."
+  echo "Deploy abortado por falta de configuração de ambiente."
+  exit 1
 fi
 
-# 2. Validação de Variáveis (Evita subir sem banco)
+# Carrega variáveis de ambiente
+source "$ENV_FILE"
+
+# Validação forte das variáveis obrigatórias
 : "${DB_HOST:?DB_HOST não definido}"
 : "${DB_PORT:?DB_PORT não definido}"
 : "${DB_NAME:?DB_NAME não definido}"
 : "${DB_USERNAME:?DB_USERNAME não definido}"
 : "${DB_PASSWORD:?DB_PASSWORD não definido}"
 
-# 3. Alinhamento com application-prod.properties
+# Alinhamento com o Spring Boot
 export SPRING_DATASOURCE_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
 export SPRING_DATASOURCE_USERNAME="${DB_USERNAME}"
 export SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}"
 
-mkdir -p "$APP_DIR"
 cd "$APP_DIR"
 
-echo "Iniciando aplicação com Banco: $DB_HOST"
+echo "Subindo aplicação conectando no banco: $DB_HOST"
 
-# 4. Execução - Adicionado o perfil 'prod' para bater com seu .properties
 nohup java -Dspring.profiles.active=prod -jar "$APP_NAME" > "$LOG_FILE" 2>&1 &
 
-# Pausa para o Java subir (Aumentado para 30s por segurança)
+# Tempo para a JVM subir e tentar conexão com o banco
 sleep 30
 
-# 5. Validação
+# Validação do processo
 if pgrep -f "$APP_NAME" > /dev/null; then
-  echo "Sucesso: Processo Java ativo."
+  echo "Aplicação iniciada com sucesso."
 else
-  echo "Erro: Aplicação falhou ao conectar no banco $DB_HOST"
+  echo "Falha ao subir a aplicação. Últimos logs:"
   tail -n 100 "$LOG_FILE"
   exit 1
 fi
+

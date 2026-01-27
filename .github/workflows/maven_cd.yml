@@ -46,9 +46,13 @@ jobs:
           rm -rf $DEPLOY_TEMP
           mkdir -p $DEPLOY_TEMP/scripts
           
+          # Copia os arquivos para a estrutura temporária
           cp $JAR_ORIGEM $DEPLOY_TEMP/stock-manager.jar
           cp $PROJECT_DIR/appspec.yml $DEPLOY_TEMP/
           cp -r $PROJECT_DIR/scripts/* $DEPLOY_TEMP/scripts/
+          
+          # GARANTIA UBUNTU: Força permissão de execução antes de zipar
+          chmod +x $DEPLOY_TEMP/scripts/*.sh
           
           cd $DEPLOY_TEMP
           zip -r ../deploy-package.zip .
@@ -58,9 +62,9 @@ jobs:
 
       - name: Executar Deploy na AWS
         run: |
-          aws deploy create-deployment --application-name stock-manager-app --deployment-group-name stock-manager-prod-dg --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip --ignore-application-stop-failures
-
-            
-
-
+          aws deploy create-deployment \
+            --application-name stock-manager-app \
+            --deployment-group-name stock-manager-prod-dg \
+            --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip \
+            --ignore-application-stop-failures
             

@@ -1,9 +1,24 @@
 #!/bin/bash
 set -e
 
-# Carrega variáveis globais do sistema (CodeDeploy não herda shell interativo)
+echo "Carregando variáveis globais do sistema..."
+
+# Carrega variáveis de ambiente do sistema
 if [ -f /etc/environment ]; then
-  export $(grep -v '^#' /etc/environment | xargs)
+  set -a
+  source /etc/environment
+  set +a
+fi
+
+# Carrega qualquer profile existente
+if [ -f /etc/profile ]; then
+  source /etc/profile
+fi
+
+if [ -d /etc/profile.d ]; then
+  for f in /etc/profile.d/*.sh; do
+    [ -r "$f" ] && source "$f"
+  done
 fi
 
 APP_DIR="/home/ec2-user/app"
@@ -14,7 +29,6 @@ echo "Configurando diretórios base da aplicação em $APP_DIR..."
 
 mkdir -p "$APP_DIR"
 rm -f "$APP_DIR"/*.log || true
-
 chown -R ec2-user:ec2-user "$APP_DIR"
 chmod -R 755 "$APP_DIR"
 
@@ -41,15 +55,5 @@ EOF
 chmod 600 "$ENV_FILE"
 chown root:root "$ENV_FILE"
 
-echo "Ajustando permissões da aplicação (se os arquivos já existirem)..."
+echo "BeforeInstall concluído com sucesso."
 
-# Só ajusta permissões se os arquivos já existirem
-if [ -d "$APP_DIR/scripts" ]; then
-  find "$APP_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \; || true
-fi
-
-if [ -f "$APP_DIR/stock-manager.jar" ]; then
-  chmod 755 "$APP_DIR/stock-manager.jar"
-fi
-
-echo "Permissões e variáveis de ambiente configuradas com sucesso."

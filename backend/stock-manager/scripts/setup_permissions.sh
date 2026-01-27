@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Carrega variáveis globais do sistema (CodeDeploy não herda shell interativo)
+if [ -f /etc/environment ]; then
+  export $(grep -v '^#' /etc/environment | xargs)
+fi
+
 APP_DIR="/home/ec2-user/app"
 ENV_FILE="/etc/profile.d/app_env.sh"
 ENV_DIR="/etc/profile.d"
@@ -48,4 +53,3 @@ if [ -f "$APP_DIR/stock-manager.jar" ]; then
 fi
 
 echo "Permissões e variáveis de ambiente configuradas com sucesso."
-

@@ -58,8 +58,9 @@ jobs:
 
       - name: Executar Deploy na AWS
         run: |
-          aws deploy create-deployment \
-            --application-name stock-manager-app \
-            --deployment-group-name stock-manager-prod-dg \
-            --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip \
-            --ignore-application-stop-failures
+          aws deploy create-deployment --application-name stock-manager-app --deployment-group-name stock-manager-prod-dg --s3-location bucket=${{ env.S3_BUCKET }},key=deploy/stock-manager.zip,bundleType=zip --ignore-application-stop-failures
+
+            
+
+
+            

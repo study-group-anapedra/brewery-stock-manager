@@ -5,16 +5,13 @@ APP_DIR="/home/ec2-user/app"
 ENV_FILE="/etc/profile.d/app_env.sh"
 ENV_DIR="/etc/profile.d"
 
-echo "Configurando diretórios e permissões da aplicação em $APP_DIR..."
+echo "Configurando diretórios base da aplicação em $APP_DIR..."
 
 mkdir -p "$APP_DIR"
 rm -f "$APP_DIR"/*.log || true
 
 chown -R ec2-user:ec2-user "$APP_DIR"
 chmod -R 755 "$APP_DIR"
-
-chmod +x "$APP_DIR/scripts/"*.sh
-chmod 755 "$APP_DIR/stock-manager.jar"
 
 echo "Validando variáveis de banco antes de criar $ENV_FILE..."
 
@@ -26,7 +23,6 @@ echo "Validando variáveis de banco antes de criar $ENV_FILE..."
 
 echo "Criando arquivo de variáveis de ambiente do banco em $ENV_FILE..."
 
-# Garante que o diretório exista
 mkdir -p "$ENV_DIR"
 
 cat <<EOF > "$ENV_FILE"
@@ -39,6 +35,17 @@ EOF
 
 chmod 600 "$ENV_FILE"
 chown root:root "$ENV_FILE"
+
+echo "Ajustando permissões da aplicação (se os arquivos já existirem)..."
+
+# Só ajusta permissões se os arquivos já existirem
+if [ -d "$APP_DIR/scripts" ]; then
+  find "$APP_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} \; || true
+fi
+
+if [ -f "$APP_DIR/stock-manager.jar" ]; then
+  chmod 755 "$APP_DIR/stock-manager.jar"
+fi
 
 echo "Permissões e variáveis de ambiente configuradas com sucesso."
 

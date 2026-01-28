@@ -4,8 +4,6 @@ os: linux
 files:
   - source: stock-manager.jar
     destination: /home/ec2-user/app
-  - source: scripts
-    destination: /home/ec2-user/app/scripts
 
 hooks:
   ApplicationStop:
@@ -14,6 +12,11 @@ hooks:
       runas: root
 
   BeforeInstall:
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: root
+
+  AfterInstall:
     - location: scripts/setup_permissions.sh
       timeout: 300
       runas: root

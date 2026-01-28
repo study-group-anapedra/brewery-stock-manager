@@ -7,61 +7,72 @@ LOG_FILE="$APP_DIR/stock-manager.log"
 ENV_FILE="/etc/profile.d/app_env.sh"
 
 echo "Iniciando start da aplicação..."
+echo "Executando como usuário: $(whoami)"
 
 # Garante que o diretório existe
 mkdir -p "$APP_DIR"
 
+# Garante permissão de escrita no log
+touch "$LOG_FILE"
+chown -R ec2-user:ec2-user "$APP_DIR"
+
 # Verifica se o arquivo de variáveis existe
 if [ ! -f "$ENV_FILE" ]; then
   echo "ERRO: Arquivo de variáveis $ENV_FILE não encontrado."
-  echo "Deploy abortado por falta de configuração de ambiente."
   exit 1
 fi
 
-# Carrega variáveis de ambiente e exporta tudo
+echo "Carregando variáveis de ambiente..."
 set -a
 source "$ENV_FILE"
 set +a
 
-# Validação forte das variáveis obrigatórias
+echo "Variáveis carregadas:"
+env | grep DB_
+
+# Validação forte
 : "${DB_HOST:?DB_HOST não definido}"
 : "${DB_PORT:?DB_PORT não definido}"
 : "${DB_NAME:?DB_NAME não definido}"
 : "${DB_USERNAME:?DB_USERNAME não definido}"
 : "${DB_PASSWORD:?DB_PASSWORD não definido}"
 
-# Garante que o Java está instalado
+# Garante Java
 if ! command -v java >/dev/null 2>&1; then
-  echo "ERRO: Java não está instalado ou não está no PATH."
+  echo "ERRO: Java não encontrado"
   exit 1
 fi
 
+java -version
+
 # Garante que o JAR existe
 if [ ! -f "$APP_DIR/$APP_NAME" ]; then
-  echo "ERRO: Arquivo $APP_NAME não encontrado em $APP_DIR"
+  echo "ERRO: $APP_NAME não encontrado em $APP_DIR"
   ls -l "$APP_DIR"
   exit 1
 fi
 
-# Alinhamento com o Spring Boot
+# Variáveis Spring explícitas
 export SPRING_DATASOURCE_URL="jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}"
 export SPRING_DATASOURCE_USERNAME="${DB_USERNAME}"
 export SPRING_DATASOURCE_PASSWORD="${DB_PASSWORD}"
 
+echo "Spring datasource:"
+echo "$SPRING_DATASOURCE_URL"
+
 cd "$APP_DIR"
 
-echo "Subindo aplicação conectando no banco: $DB_HOST"
+echo "Subindo aplicação..."
 
 nohup java -Dspring.profiles.active=prod -jar "$APP_NAME" > "$LOG_FILE" 2>&1 &
 
-# Tempo para a JVM subir e tentar conexão com o banco
-sleep 30
+sleep 20
 
-# Validação do processo
 if pgrep -f "$APP_NAME" > /dev/null; then
   echo "Aplicação iniciada com sucesso."
+  exit 0
 else
-  echo "Falha ao subir a aplicação. Últimos logs:"
+  echo "Aplicação não subiu. Logs:"
   tail -n 200 "$LOG_FILE"
   exit 1
 fi
